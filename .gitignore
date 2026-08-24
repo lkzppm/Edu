@@ -16,3 +16,6 @@ out/
 
 # misc
 .DS_Store
+
+# python build artifacts
+*.egg-info/
