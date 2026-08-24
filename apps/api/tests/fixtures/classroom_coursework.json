@@ -1,0 +1,25 @@
+[
+  {
+    "id": "cw-1",
+    "title": "Lista — Autovalores",
+    "description": "Enviar foto das resoluções.",
+    "workType": "ASSIGNMENT",
+    "alternateLink": "https://classroom.google.com/c/abc/a/cw-1",
+    "maxPoints": 10,
+    "dueDate": { "year": 2026, "month": 9, "day": 2 },
+    "dueTime": { "hours": 23, "minutes": 0 }
+  },
+  {
+    "id": "cw-2",
+    "title": "Reading quiz",
+    "workType": "SHORT_ANSWER_QUESTION",
+    "alternateLink": "https://classroom.google.com/c/abc/a/cw-2",
+    "dueDate": { "year": 2026, "month": 9, "day": 10 }
+  },
+  {
+    "id": "cw-3",
+    "title": "Essay draft",
+    "workType": "ASSIGNMENT",
+    "alternateLink": "https://classroom.google.com/c/abc/a/cw-3"
+  }
+]

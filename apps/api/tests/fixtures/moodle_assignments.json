@@ -1,0 +1,24 @@
+{
+  "courses": [
+    {
+      "id": 42,
+      "fullname": "Cálculo III",
+      "assignments": [
+        {
+          "id": 7,
+          "cmid": 301,
+          "name": "Lista 4",
+          "intro": "<p>Exerc&iacute;cios <b>1&ndash;12</b> do cap. 16.</p>",
+          "duedate": 1767225600
+        },
+        {
+          "id": 8,
+          "cmid": 302,
+          "name": "Lista 5",
+          "intro": "",
+          "duedate": 0
+        }
+      ]
+    }
+  ]
+}

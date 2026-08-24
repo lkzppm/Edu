@@ -1,0 +1,13 @@
+{
+  "quizzes": [
+    {
+      "id": 3,
+      "course": 42,
+      "coursemodule": 310,
+      "name": "Quiz — Recursão",
+      "intro": "<p>10 questões.</p>",
+      "timeopen": 1767139200,
+      "timeclose": 1767312000
+    }
+  ]
+}

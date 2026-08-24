@@ -1,0 +1,5 @@
+[
+  { "id": "sub-1", "courseWorkId": "cw-1", "state": "TURNED_IN" },
+  { "id": "sub-2", "courseWorkId": "cw-2", "state": "RETURNED", "assignedGrade": 8.5 },
+  { "id": "sub-3", "courseWorkId": "cw-3", "state": "CREATED" }
+]
