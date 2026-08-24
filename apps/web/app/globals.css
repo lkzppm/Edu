@@ -1,0 +1,80 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  @apply bg-[#040e12] text-zinc-100 antialiased;
+}
+
+/* Aurora — soft teal-cyan glows anchoring the brand theme */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(55% 40% at 50% -5%, rgba(34, 184, 207, 0.14), transparent 70%),
+    radial-gradient(35% 30% at 100% 110%, rgba(34, 184, 207, 0.06), transparent 70%);
+}
+
+::selection {
+  @apply bg-cyan-600/40;
+}
+
+@keyframes msg-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.animate-msg-in {
+  animation: msg-in 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes chip-in {
+  from {
+    opacity: 0;
+    transform: translateX(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.animate-chip-in {
+  animation: chip-in 0.22s ease-out both;
+}
+
+/* Task row leaving the todo pile — collapse + fade */
+@keyframes task-done {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0.45;
+  }
+}
+.animate-task-done {
+  animation: task-done 0.3s ease-out both;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 235, 255, 0.15) transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-thumb {
+  background: rgba(148, 235, 255, 0.15);
+  border-radius: 8px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}

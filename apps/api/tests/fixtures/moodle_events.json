@@ -1,0 +1,37 @@
+{
+  "events": [
+    {
+      "id": 900,
+      "name": "P2 — Cálculo III",
+      "description": "<p>Matéria: integrais.</p>",
+      "courseid": 42,
+      "modulename": null,
+      "eventtype": "course",
+      "timestart": 1767916800
+    },
+    {
+      "id": 901,
+      "name": "Entrega Lista 4",
+      "courseid": 42,
+      "modulename": "assign",
+      "eventtype": "due",
+      "timestart": 1767225600
+    },
+    {
+      "id": 902,
+      "name": "Semana acadêmica",
+      "courseid": 42,
+      "modulename": null,
+      "eventtype": "course",
+      "timestart": 1768003200
+    },
+    {
+      "id": 903,
+      "name": "Site-wide notice",
+      "courseid": 0,
+      "modulename": null,
+      "eventtype": "site",
+      "timestart": 1768003200
+    }
+  ]
+}
