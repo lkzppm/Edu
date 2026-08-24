@@ -1,0 +1,43 @@
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: edu
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-edu}
+      POSTGRES_DB: edu
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U edu -d edu"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build: ./apps/api
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      DATABASE_URL: postgresql+psycopg://edu:${POSTGRES_PASSWORD:-edu}@db:5432/edu
+      WEB_ORIGIN: http://edu.localhost
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8001:8000"
+
+  web:
+    build: ./apps/web
+    restart: unless-stopped
+    environment:
+      API_URL: http://api:8000
+    depends_on:
+      - api
+    ports:
+      - "3001:3000"
+
+volumes:
+  pgdata:

@@ -1,0 +1,18 @@
+# secrets
+.env
+
+# python
+build/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.venv/
+
+# node / next
+node_modules/
+.next/
+out/
+
+# misc
+.DS_Store
