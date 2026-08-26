@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { CollegePanel, nextClass } from "@/components/college";
 import { ConnectorsPanel } from "@/components/connectors-panel";
 import { upcomingExams } from "@/components/exams";
 import { GradesPanel } from "@/components/grades";
@@ -11,6 +12,7 @@ import { api } from "@/lib/api";
 import { courseColorMap } from "@/lib/colors";
 import { fmtCountdown, fmtDay, fmtDue } from "@/lib/format";
 import {
+  CollegeResponse,
   Course,
   ConnectorsResponse,
   GradesResponse,
@@ -26,12 +28,13 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
   );
 }
 
-type Panel = "tasks" | "grades";
+type Panel = "tasks" | "grades" | "college";
 
 export default function Home() {
   const [panel, setPanel] = useState<Panel>("tasks");
   const [data, setData] = useState<TasksResponse | null>(null);
   const [grades, setGrades] = useState<GradesResponse | null>(null);
+  const [college, setCollege] = useState<CollegeResponse | null>(null);
   const [courses, setCourses] = useState<Course[]>([]);
   const [connCount, setConnCount] = useState(0);
   const [anySyncing, setAnySyncing] = useState(false);
@@ -44,14 +47,16 @@ export default function Home() {
 
   const load = useCallback(async () => {
     try {
-      const [tasksRes, coursesRes, connRes, gradesRes] = await Promise.all([
+      const [tasksRes, coursesRes, connRes, gradesRes, collegeRes] = await Promise.all([
         api<TasksResponse>("/tasks"),
         api<Course[]>("/courses"),
         api<ConnectorsResponse>("/connectors"),
         api<GradesResponse>("/grades"),
+        api<CollegeResponse>("/college"),
       ]);
       setData(tasksRes);
       setGrades(gradesRes);
+      setCollege(collegeRes);
       setCourses(coursesRes.filter((c) => !c.hidden));
       setConnCount(connRes.connectors.length);
       setAnySyncing(connRes.connectors.some((c) => c.sync_status === "syncing"));
@@ -132,6 +137,10 @@ export default function Home() {
   };
 
   const summary = data?.summary;
+  const upcoming = useMemo(
+    () => (college ? nextClass(college.classes) : null),
+    [college]
+  );
 
   return (
     <main className="mx-auto min-h-screen max-w-6xl px-5 pb-28">
@@ -141,7 +150,7 @@ export default function Home() {
           Edu<span className="text-accent">.</span>
         </h1>
         <nav className="flex gap-1 rounded-xl bg-white/[0.04] p-1 font-display text-xs font-medium">
-          {(["tasks", "grades"] as const).map((p) => (
+          {(["tasks", "grades", "college"] as const).map((p) => (
             <button
               key={p}
               onClick={() => setPanel(p)}
@@ -181,6 +190,12 @@ export default function Home() {
         </div>
       )}
 
+      {panel === "college" && college && (
+        <div className="animate-msg-in pt-4">
+          <CollegePanel data={college} colors={colors} />
+        </div>
+      )}
+
       {panel === "tasks" && (
         <div className="animate-msg-in">
       {/* Hero: week count · 7-day strip · next test */}
@@ -208,6 +223,12 @@ export default function Home() {
               </span>
             )}
           </div>
+          {upcoming && (
+            <p className="mt-4 font-mono text-xs text-zinc-500">
+              <span className="text-zinc-600">class </span>
+              {upcoming}
+            </p>
+          )}
         </div>
 
         <div className="min-w-0 lg:mx-8 lg:flex-1">

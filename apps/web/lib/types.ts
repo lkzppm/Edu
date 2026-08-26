@@ -73,3 +73,71 @@ export type TasksResponse = {
   summary: { overdue: number; due_today: number; due_week: number; done_week: number };
   tasks: Task[];
 };
+
+export type ClassSlot = { day: string; start: string; end: string; room?: string };
+
+export type CoworkItem = {
+  date: string | null;
+  slug: string;
+  title: string;
+  path: string;
+  files: number;
+  has_pdf: boolean;
+};
+
+export type SemClass = {
+  code: string;
+  name: string;
+  semester: string | null;
+  turma: string | null;
+  credits: number | null;
+  kind: string | null;
+  period: number | null;
+  anchor: string | null;
+  flags: string[];
+  professor: string | null;
+  contact: string | null;
+  evaluation: string | null;
+  platform: string | null;
+  platform_url: string | null;
+  links: { label: string; url: string }[];
+  schedule: ClassSlot[];
+  course_id: number | null;
+  pending: number;
+  work_items: CoworkItem[];
+};
+
+export type PlanCourse = {
+  code: string;
+  name: string;
+  credits?: number;
+  status?: string;
+  planned?: string;
+  note?: string;
+  at_risk?: boolean;
+  role?: string;
+  unlocks?: string;
+};
+
+export type CollegeResponse = {
+  classes: SemClass[];
+  plan: {
+    meta?: Record<string, string>;
+    requirements?: {
+      key: string;
+      label: string;
+      unit: string;
+      required?: number;
+      done?: number;
+      in_course?: number;
+    }[];
+    curriculum?: { period: number; courses: PlanCourse[] }[];
+    forward?: { semester: string; label?: string; note?: string; courses: PlanCourse[] }[];
+    summary?: {
+      credits: Record<string, number>;
+      counts: Record<string, number>;
+      total_credits: number;
+      done_pct: number | null;
+    };
+  };
+};

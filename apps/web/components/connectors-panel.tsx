@@ -5,6 +5,7 @@ import {
   BookIcon,
   Button,
   CapIcon,
+  ClaudeIcon,
   CloseIcon,
   CompassIcon,
   EyeIcon,
@@ -20,7 +21,7 @@ import { api } from "@/lib/api";
 import { timeAgo } from "@/lib/format";
 import { Conn, ConnectorsResponse } from "@/lib/types";
 
-type TypeKey = "classroom" | "moodle-ufrj" | "polimoodle" | "compasso" | "moodle";
+type TypeKey = "classroom" | "moodle-ufrj" | "polimoodle" | "compasso" | "cowork" | "moodle";
 
 const TYPES: Record<
   TypeKey,
@@ -28,7 +29,7 @@ const TYPES: Record<
     title: string;
     hint: string;
     icon: ComponentType<{ className?: string }>;
-    api: "classroom" | "moodle" | "compasso";
+    api: "classroom" | "moodle" | "compasso" | "cowork";
     baseUrl?: string;
   }
 > = {
@@ -59,6 +60,12 @@ const TYPES: Record<
     hint: "compasso.ufrj.br course page (public schedule sheet)",
     icon: CompassIcon,
     api: "compasso",
+  },
+  cowork: {
+    title: "Claude Cowork",
+    hint: "local UFRJ workspace (CONTEXT.md pattern)",
+    icon: ClaudeIcon,
+    api: "cowork",
   },
   moodle: {
     title: "Other Moodle",
@@ -126,7 +133,13 @@ function AccountCard({
   busy: boolean;
 }) {
   const Ico =
-    conn.name === "classroom" ? CapIcon : conn.name === "compasso" ? CompassIcon : BookIcon;
+    conn.name === "classroom"
+      ? CapIcon
+      : conn.name === "compasso"
+        ? CompassIcon
+        : conn.name === "cowork"
+          ? ClaudeIcon
+          : BookIcon;
   return (
     <section className="animate-chip-in">
       <div className="flex items-center justify-between">
@@ -292,6 +305,9 @@ export function ConnectorsPanel({
       true
     );
 
+  const connectCowork = () =>
+    action("cowork", () => api("/connectors/cowork", { method: "POST" }), true);
+
   const accounts = data?.connectors ?? [];
 
   const moodleForm = (type: TypeKey): ReactNode => {
@@ -392,6 +408,22 @@ export function ConnectorsPanel({
           <TextBtn onClick={() => demo("classroom")} disabled={busy === "classroom"} className="shrink-0">
             demo
           </TextBtn>
+        </div>
+      );
+    }
+    if (type === "cowork") {
+      return (
+        <div className="flex flex-col gap-4">
+          <p className="text-xs text-zinc-500">
+            Reads the mounted workspace (read-only): class registry from each{" "}
+            <code className="text-zinc-400">CONTEXT.md</code> frontmatter, deliveries from{" "}
+            <code className="text-zinc-400">listas/</code>. Nothing is ever written back.
+          </p>
+          <div>
+            <Button onClick={connectCowork} disabled={busy === "cowork"}>
+              Connect workspace
+            </Button>
+          </div>
         </div>
       );
     }

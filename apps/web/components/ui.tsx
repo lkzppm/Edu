@@ -171,6 +171,15 @@ export const GlobeIcon = ({ className }: { className?: string }) => (
   </Icon>
 );
 
+export const ClaudeIcon = ({ className }: { className?: string }) => (
+  <Icon className={className}>
+    <path d="M12 3v18" />
+    <path d="M3 12h18" />
+    <path d="M5.9 5.9l12.2 12.2" />
+    <path d="M18.1 5.9L5.9 18.1" />
+  </Icon>
+);
+
 export const CompassIcon = ({ className }: { className?: string }) => (
   <Icon className={className}>
     <circle cx="12" cy="12" r="10" />
