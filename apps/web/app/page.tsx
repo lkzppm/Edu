@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { ChatOverlay } from "@/components/chat-overlay";
 import { CollegePanel, nextClass } from "@/components/college";
 import { ConnectorsPanel } from "@/components/connectors-panel";
 import { CoworkButton } from "@/components/cowork";
@@ -45,6 +46,7 @@ export default function Home() {
   const [view, setView] = useState<TaskView>("pending");
   const [showAdd, setShowAdd] = useState(false);
   const [panelOpen, setPanelOpen] = useState(false);
+  const [showChat, setShowChat] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -86,6 +88,18 @@ export default function Home() {
     const id = setInterval(load, 3_000);
     return () => clearInterval(id);
   }, [anySyncing, load]);
+
+  // ⌘⇧E (mac) / Ctrl+Shift+E toggles the Edu chat from anywhere.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === "e") {
+        e.preventDefault();
+        setShowChat((v) => !v);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   const colors = useMemo(() => courseColorMap(courses.map((c) => c.id)), [courses]);
 
@@ -370,7 +384,26 @@ export default function Home() {
         </div>
       )}
 
+      {/* ── Edu dot — always bottom center ─────────────────── */}
+      <button
+        onClick={() => setShowChat(true)}
+        aria-label="Chat with Edu"
+        title="Chat with Edu"
+        className={`group fixed bottom-5 left-1/2 z-30 -translate-x-1/2 p-3 transition-opacity duration-300 ${
+          showChat ? "pointer-events-none opacity-0" : "opacity-100"
+        }`}
+      >
+        <span className="relative block h-3.5 w-3.5">
+          <span className="absolute inset-0 block animate-ping rounded-full bg-accent opacity-30 [animation-duration:2.5s]" />
+          <span className="relative block h-3.5 w-3.5 rounded-full bg-accent shadow-glow transition-transform duration-200 group-hover:scale-125" />
+        </span>
+        <span className="pointer-events-none absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap font-mono text-[10px] uppercase tracking-widest text-zinc-500 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+          ask edu <span className="ml-1 text-zinc-600">⌘⇧E</span>
+        </span>
+      </button>
+
       <ConnectorsPanel open={panelOpen} onClose={() => setPanelOpen(false)} onChanged={load} />
+      <ChatOverlay open={showChat} onClose={() => setShowChat(false)} />
     </main>
   );
 }

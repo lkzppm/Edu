@@ -24,6 +24,23 @@ Container is `max-w-6xl` (matches Fin). Two-column on `lg`: tasks (2/3) + visual
 | **Tasks (main col)** | header row holds a **pending \| done segmented switch** (with counts — done view lists completed tasks newest-first, replacing the list rather than piling under it) and a **+ add** toggle that reveals the manual quick-add form on demand (never permanently on screen); the unified list grouped **Overdue / Today / Tomorrow / This week / Later / No due date**; **Later and No due date start collapsed** when >3 items (2026-08-26 — the far horizon was tripling the page): one compact row of course-colored marks + date range, click (or the "show" toggle) expands; each row: check circle (toggles local done), title, colored course chip, kind tag, due (time only when meaningful), source badge (`submitted`/`graded`), link-out icon. Dismiss hides a synced task for good. |
 | **Sidebar** | **Workload** — per-course pending bars (course color, sorted by load, all non-hidden courses listed). This IS the course filter (the old chip strip was removed, 2026-08-21): clicking a row filters the whole page to that course — selected row highlighted, others dimmed — and a course-colored ✕ chip appears by the Tasks title; clicking either clears. (The tests strip is gone, 2026-08-26 — test dates live in the planner's chart/calendar and the next-test hero.) |
 
+## Chat (2026-08-26 — Fin's chat overlay, teal-shifted)
+
+Full-screen **chat overlay** over a blurred backdrop, opened by the **Edu dot**
+(pulsing accent dot fixed bottom-center, hover tooltip "ask edu ⌘⇧E") or
+**⌘⇧E / Ctrl+Shift+E** from anywhere; Esc closes (history sidebar first). The
+input is a pill — centered spotlight when the chat is empty, pinned to the
+bottom in conversation — with a morphing send ⇄ stop button, pasted-image
+attachments (max 4), and edgeless model + effort selects underneath. Answers
+stream with a steady-rate word-fade reveal (`fade-seg`), a shimmering
+activity line while the agent thinks or calls tools, and a **tool-icon row**
+above each answer (one icon per call — tasks/grades/college/courses/plug/
+sync/search/globe; click one to expand its params panel). Conversations
+persist to localStorage (`edu.chats`, 50 max, images stripped), with a
+slide-in history sidebar (open/delete), "new chat", and session resume via the
+agent's session id. Missing token shows the one-time `claude setup-token`
+setup card instead of the chat.
+
 ## Course colors
 
 Courses get stable entity colors from `lib/colors.ts` slots — **cool-only** (2026-08-30, Lucas: blue/green/purple tones, no warm hues), passing all six dataviz checks on the dark surface (adjacent CVD ΔE 8.6+, normal-vision 16.4+, ≥3:1 contrast): `#3f8fe0` blue, `#2bab81` green, `#8f7ff0` lavender, `#2d9fb8` teal, `#7d52d8` violet, `#4aa94a` leaf green, `#2f6fb8` deep blue, `#a678e0` light purple — hue families alternate and lightness ladders so neighbors stay distinct. Assigned by course id order per account, never reshuffled by rank. (Supersedes Fin's warm-slot palette; the "lost points" 35%-alpha rule in Grades is hue-agnostic and carries over.)

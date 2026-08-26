@@ -33,7 +33,7 @@ Threat model: single user (Lucas); the goal is zero public attack surface, not m
 4. Install Tailscale, `tailscale up`, then `tailscale set --auto-update`. In the admin console enable MagicDNS + HTTPS certs.
 5. Firewall: `ufw default deny incoming`, `ufw allow in on tailscale0`, `ufw enable`. SSH thereafter only over the tailnet.
 6. Enable `unattended-upgrades` for OS security patches.
-7. Clone the repo, copy `.env` (never committed; transfer over the tailnet, e.g. `tailscale file cp` or scp).
+7. Clone the repo, copy `.env` (never committed; transfer over the tailnet, e.g. `tailscale file cp` or scp). Include `CLAUDE_CODE_OAUTH_TOKEN` so the chat agent works on the homelab — the agent container has no published port, so nothing else changes.
 
 ## Run / update
 

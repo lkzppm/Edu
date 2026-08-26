@@ -223,3 +223,73 @@ export const EyeOffIcon = ({ className }: { className?: string }) => (
     <path d="m2 2 20 20" />
   </Icon>
 );
+
+export const SendIcon = ({ className }: { className?: string }) => (
+  <Icon className={className}>
+    <path d="m22 2-7 20-4-9-9-4Z" />
+    <path d="M22 2 11 13" />
+  </Icon>
+);
+
+export const StopIcon = ({ className }: { className?: string }) => (
+  <Icon className={className}>
+    <rect x="6.5" y="6.5" width="11" height="11" rx="2" />
+  </Icon>
+);
+
+export const HistoryIcon = ({ className }: { className?: string }) => (
+  <Icon className={className}>
+    <path d="M3 3v5h5" />
+    <path d="M3.05 13A9 9 0 1 0 6 5.3L3 8" />
+    <path d="M12 7v5l4 2" />
+  </Icon>
+);
+
+export const ArrowDownIcon = ({ className }: { className?: string }) => (
+  <Icon className={className}>
+    <path d="M12 5v14" />
+    <path d="m19 12-7 7-7-7" />
+  </Icon>
+);
+
+export const BrainIcon = ({ className }: { className?: string }) => (
+  <Icon className={className}>
+    <path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z" />
+    <path d="M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z" />
+    <path d="M15 13a4.5 4.5 0 0 1-3-4 4.5 4.5 0 0 1-3 4" />
+    <path d="M17.599 6.5a3 3 0 0 0 .399-1.375" />
+    <path d="M6.003 5.125A3 3 0 0 0 6.401 6.5" />
+  </Icon>
+);
+
+export const BoltIcon = ({ className }: { className?: string }) => (
+  <Icon className={className}>
+    <path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z" />
+  </Icon>
+);
+
+export const SearchIcon = ({ className }: { className?: string }) => (
+  <Icon className={className}>
+    <circle cx="11" cy="11" r="8" />
+    <path d="m21 21-4.3-4.3" />
+  </Icon>
+);
+
+export const ListIcon = ({ className }: { className?: string }) => (
+  <Icon className={className}>
+    <path d="M8 6h13" />
+    <path d="M8 12h13" />
+    <path d="M8 18h13" />
+    <path d="M3 6h.01" />
+    <path d="M3 12h.01" />
+    <path d="M3 18h.01" />
+  </Icon>
+);
+
+export const PercentIcon = ({ className }: { className?: string }) => (
+  <Icon className={className}>
+    <path d="M19 5 5 19" />
+    <circle cx="6.5" cy="6.5" r="2.5" />
+    <circle cx="17.5" cy="17.5" r="2.5" />
+  </Icon>
+);
