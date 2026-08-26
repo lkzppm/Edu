@@ -115,6 +115,7 @@ export type PlanCourse = {
   planned?: string;
   note?: string;
   at_risk?: boolean;
+  requires?: string[];
   role?: string;
   unlocks?: string;
 };

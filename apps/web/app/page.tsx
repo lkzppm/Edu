@@ -149,7 +149,7 @@ export default function Home() {
     <main className="mx-auto min-h-screen max-w-6xl px-5 pb-28">
       {/* Navbar */}
       <header className="flex items-center justify-between py-6">
-        <h1 className="font-display text-xl font-semibold tracking-tight">
+        <h1 className="flex-1 font-display text-xl font-semibold tracking-tight">
           Edu<span className="text-accent">.</span>
         </h1>
         <nav className="flex gap-1 rounded-xl bg-white/[0.04] p-1 font-display text-xs font-medium">
@@ -167,7 +167,7 @@ export default function Home() {
             </button>
           ))}
         </nav>
-        <div className="flex items-center gap-1">
+        <div className="flex flex-1 items-center justify-end gap-1">
         <CoworkButton
           conn={cowork}
           classesCount={college?.classes.length ?? 0}

@@ -33,29 +33,29 @@ curriculum:
       - {code: MAC118, name: Cálculo Difer. e Integral I, credits: 6, status: dispensada}
   - period: 2
     courses:
-      - {code: EEL480, name: Sistemas Digitais, credits: 5, status: a_cursar, planned: 2028/1, note: "coringa — absorve COC473 se negado em 2027/1"}
+      - {code: EEL480, name: Sistemas Digitais, credits: 5, status: a_cursar, planned: 2028/1, note: "coringa — absorve COC473 se negado em 2027/1", requires: [EEL280]}
       - {code: EEL670, name: Linguagens de Programação, credits: 5, status: dispensada}
-      - {code: FIS121, name: Física Experimental II, credits: 1, status: dispensada}
-      - {code: FIT122, name: Física II-A, credits: 4, status: dispensada}
-      - {code: MAC128, name: Cálculo Difer. e Integral II, credits: 4, status: dispensada}
+      - {code: FIS121, name: Física Experimental II, credits: 1, status: dispensada, requires: [FIS111]}
+      - {code: FIT122, name: Física II-A, credits: 4, status: dispensada, requires: [FIT112]}
+      - {code: MAC128, name: Cálculo Difer. e Integral II, credits: 4, status: dispensada, requires: [MAC118]}
       - {code: MAE125, name: Álgebra Linear, credits: 4, status: dispensada}
   - period: 3
     courses:
-      - {code: COS231, name: Estruturas de Dados, credits: 5, status: dispensada}
+      - {code: COS231, name: Estruturas de Dados, credits: 5, status: dispensada, requires: [COS110]}
       - {code: EEL580, name: Arquitetura de Computadores, credits: 5, status: em_curso}
       - {code: EEL881, name: Teoria da Computação, credits: 4, status: a_cursar, planned: 2027/1}
-      - {code: FIM230, name: Física III-A, credits: 4, status: dispensada}
-      - {code: FIN231, name: Física Experimental III, credits: 1, status: dispensada}
-      - {code: MAC238, name: Cálculo Difer. e Integral III, credits: 4, status: dispensada}
+      - {code: FIM230, name: Física III-A, credits: 4, status: dispensada, requires: [FIT122]}
+      - {code: FIN231, name: Física Experimental III, credits: 1, status: dispensada, requires: [FIS121]}
+      - {code: MAC238, name: Cálculo Difer. e Integral III, credits: 4, status: dispensada, requires: [MAC128]}
   - period: 4
     courses:
       - {code: COE241, name: Estatística e Mod. Probabilísticos, credits: 4, status: dispensada}
-      - {code: COS242, name: Teoria dos Grafos, credits: 4, status: em_curso, note: "CRID aponta falta de requisito"}
+      - {code: COS242, name: Teoria dos Grafos, credits: 4, status: em_curso, note: "CRID aponta falta de requisito", requires: [COS231]}
       - {code: COS471, name: Computadores e Sociedade, credits: 4, status: a_cursar, planned: 2027/2, note: "lastro cedido ao EEL191 (Humanas)"}
-      - {code: FIM240, name: Física IV-A, credits: 4, status: dispensada}
-      - {code: FIN241, name: Física Experimental IV, credits: 1, status: dispensada}
+      - {code: FIM240, name: Física IV-A, credits: 4, status: dispensada, requires: [FIM230]}
+      - {code: FIN241, name: Física Experimental IV, credits: 1, status: dispensada, requires: [FIN231]}
       - {code: IQG111, name: Química EE, credits: 4, status: dispensada}
-      - {code: MAC248, name: Cálculo Difer. e Integral IV, credits: 4, status: dispensada}
+      - {code: MAC248, name: Cálculo Difer. e Integral IV, credits: 4, status: dispensada, requires: [MAC238]}
   - period: 5
     courses:
       - {code: COC473, name: Álgebra Linear Computacional, credits: 4, status: dispensada, at_risk: true, note: "se negado, EEL480 absorve em 2028/1"}
@@ -70,7 +70,7 @@ curriculum:
       - {code: COE363, name: Telecomunicações, credits: 4, status: a_cursar, planned: 2027/2}
       - {code: COS360, name: Otimização, credits: 4, status: a_cursar, planned: 2027/1}
       - {code: EEL873, name: Engenharia de Software, credits: 4, status: em_curso}
-      - {code: EEL879, name: Redes de Computadores II, credits: 4, status: a_cursar, planned: 2027/1}
+      - {code: EEL879, name: Redes de Computadores II, credits: 4, status: a_cursar, planned: 2027/1, requires: [EEL878]}
   - period: 7
     courses:
       - {code: COC472, name: Computação de Alto Desempenho, credits: 3, status: a_cursar, planned: 2027/2}
@@ -81,8 +81,8 @@ curriculum:
   - period: 8
     courses:
       - {code: COP364, name: Empreendedorismo I, credits: 4, status: dispensada}
-      - {code: COS480, name: Construção de Bancos de Dados, credits: 4, status: a_cursar, planned: 2027/1}
-      - {code: COS482, name: Qualidade de Software, credits: 4, status: a_cursar, planned: 2027/1}
+      - {code: COS480, name: Construção de Bancos de Dados, credits: 4, status: a_cursar, planned: 2027/1, requires: [EEL871]}
+      - {code: COS482, name: Qualidade de Software, credits: 4, status: a_cursar, planned: 2027/1, requires: [EEL873]}
       - {code: EEWX00, name: Projeto de Graduação, credits: 4, status: a_cursar, planned: 2027/2, note: "início 2027/2 (orientador até set/2027) · defesa 2028/1"}
   - period: 9
     courses:
