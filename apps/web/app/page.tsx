@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { CollegePanel, nextClass } from "@/components/college";
 import { ConnectorsPanel } from "@/components/connectors-panel";
+import { CoworkButton } from "@/components/cowork";
 import { upcomingExams } from "@/components/exams";
 import { GradesPanel } from "@/components/grades";
 import { CourseLoad, dayKey, Planner } from "@/components/overview";
@@ -37,6 +38,7 @@ export default function Home() {
   const [college, setCollege] = useState<CollegeResponse | null>(null);
   const [courses, setCourses] = useState<Course[]>([]);
   const [connCount, setConnCount] = useState(0);
+  const [cowork, setCowork] = useState<import("@/lib/types").Conn | null>(null);
   const [anySyncing, setAnySyncing] = useState(false);
   const [filterCourse, setFilterCourse] = useState<number | null>(null);
   const [filterDay, setFilterDay] = useState<number | null>(null);
@@ -58,7 +60,8 @@ export default function Home() {
       setGrades(gradesRes);
       setCollege(collegeRes);
       setCourses(coursesRes.filter((c) => !c.hidden));
-      setConnCount(connRes.connectors.length);
+      setCowork(connRes.connectors.find((c) => c.name === "cowork") ?? null);
+      setConnCount(connRes.connectors.filter((c) => c.name !== "cowork").length);
       setAnySyncing(connRes.connectors.some((c) => c.sync_status === "syncing"));
       setError(null);
     } catch (e) {
@@ -164,6 +167,13 @@ export default function Home() {
             </button>
           ))}
         </nav>
+        <div className="flex items-center gap-1">
+        <CoworkButton
+          conn={cowork}
+          classesCount={college?.classes.length ?? 0}
+          deliveries={(college?.classes ?? []).reduce((n, c) => n + c.work_items.length, 0)}
+          onChanged={load}
+        />
         <button
           onClick={() => setPanelOpen(true)}
           className="relative rounded-lg p-2 text-zinc-400 transition-colors hover:bg-white/5 hover:text-zinc-100"
@@ -176,6 +186,7 @@ export default function Home() {
             </span>
           )}
         </button>
+        </div>
       </header>
 
       {error && (
