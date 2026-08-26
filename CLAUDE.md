@@ -28,3 +28,4 @@ Runs beside Fin: api on **8001**, web on **3001** (Fin owns 8000/3000).
 | [spec/standards.md](spec/standards.md) | Code style, testing, git/config conventions |
 | [spec/ui.md](spec/ui.md) | Dark/teal theme, dashboard layout, UX principles |
 | [spec/roadmap.md](spec/roadmap.md) | Phased plan and current status |
+| [spec/deploy.md](spec/deploy.md) | Homelab deploy: Tailscale-only access, security model, backups |
