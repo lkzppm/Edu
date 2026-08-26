@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from edu.db import init_db
 from edu.jobs.scheduler import boot_catchup, start_scheduler
-from edu.routes import connectors, courses, grades, tasks
+from edu.routes import college, connectors, courses, grades, tasks
 
 logging.basicConfig(level=logging.INFO)
 
@@ -35,6 +35,7 @@ app.include_router(connectors.router, prefix="/connectors", tags=["connectors"])
 app.include_router(courses.router, prefix="/courses", tags=["courses"])
 app.include_router(tasks.router, prefix="/tasks", tags=["tasks"])
 app.include_router(grades.router, prefix="/grades", tags=["grades"])
+app.include_router(college.router, prefix="/college", tags=["college"])
 
 
 @app.get("/health")

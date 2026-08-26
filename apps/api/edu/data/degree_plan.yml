@@ -1,0 +1,135 @@
+# Plano ECI/UFRJ — transcrito de plano-eci.html (dispensa de 13/08/2026).
+# Fonte da verdade editável: atualize aqui quando o CRID/dispensa mudar.
+meta:
+  student: Lucas Pereira Pacheco de Medeiros
+  dre: "126436084"
+  program: Engenharia de Computação e Informação
+  curriculum: 2012/1
+  current_semester: 2026/2
+  graduation_target: 2028/1
+  hard_limit: 2029/1
+  updated: 2026-08-20
+  notes: >-
+    90 cr pedidos em dispensa · 6 pedidos em risco (ementa < ~75%). Contingência:
+    linha negada volta na janela de mar/2027; negativas definitivas caem em
+    2027/2 (pares) ou 2028/1 (ímpares).
+
+requirements:
+  - {key: obrigatorias, label: Obrigatórias, unit: cr}      # computed from curriculum
+  - {key: optativas, label: Optativas do elenco, unit: cr, required: 40, done: 0, in_course: 4}
+  - {key: humanas, label: Humanas, unit: cr, required: 4, done: 0, in_course: 0}
+  - {key: livre, label: Escolha livre, unit: cr, required: 8, done: 0, in_course: 0}
+  - {key: ace, label: Atividades complementares, unit: h, required: 405, done: 0, in_course: 0}
+
+# Todas as obrigatórias do currículo, por período. status: dispensada | em_curso | a_cursar
+curriculum:
+  - period: 1
+    courses:
+      - {code: COS110, name: Algoritmos e Programação, credits: 5, status: dispensada}
+      - {code: COS111, name: Introd. Eng. Comput. e Informação, credits: 2, status: dispensada}
+      - {code: EEL280, name: Circuitos Lógicos, credits: 5, status: dispensada}
+      - {code: FIS111, name: Física Experimental I, credits: 1, status: dispensada}
+      - {code: FIT112, name: Física I-A, credits: 4, status: dispensada}
+      - {code: MAC118, name: Cálculo Difer. e Integral I, credits: 6, status: dispensada}
+  - period: 2
+    courses:
+      - {code: EEL480, name: Sistemas Digitais, credits: 5, status: a_cursar, planned: 2028/1, note: "coringa — absorve COC473 se negado em 2027/1"}
+      - {code: EEL670, name: Linguagens de Programação, credits: 5, status: dispensada}
+      - {code: FIS121, name: Física Experimental II, credits: 1, status: dispensada}
+      - {code: FIT122, name: Física II-A, credits: 4, status: dispensada}
+      - {code: MAC128, name: Cálculo Difer. e Integral II, credits: 4, status: dispensada}
+      - {code: MAE125, name: Álgebra Linear, credits: 4, status: dispensada}
+  - period: 3
+    courses:
+      - {code: COS231, name: Estruturas de Dados, credits: 5, status: dispensada}
+      - {code: EEL580, name: Arquitetura de Computadores, credits: 5, status: em_curso}
+      - {code: EEL881, name: Teoria da Computação, credits: 4, status: a_cursar, planned: 2027/1}
+      - {code: FIM230, name: Física III-A, credits: 4, status: dispensada}
+      - {code: FIN231, name: Física Experimental III, credits: 1, status: dispensada}
+      - {code: MAC238, name: Cálculo Difer. e Integral III, credits: 4, status: dispensada}
+  - period: 4
+    courses:
+      - {code: COE241, name: Estatística e Mod. Probabilísticos, credits: 4, status: dispensada}
+      - {code: COS242, name: Teoria dos Grafos, credits: 4, status: em_curso, note: "CRID aponta falta de requisito"}
+      - {code: COS471, name: Computadores e Sociedade, credits: 4, status: a_cursar, planned: 2027/2, note: "lastro cedido ao EEL191 (Humanas)"}
+      - {code: FIM240, name: Física IV-A, credits: 4, status: dispensada}
+      - {code: FIN241, name: Física Experimental IV, credits: 1, status: dispensada}
+      - {code: IQG111, name: Química EE, credits: 4, status: dispensada}
+      - {code: MAC248, name: Cálculo Difer. e Integral IV, credits: 4, status: dispensada}
+  - period: 5
+    courses:
+      - {code: COC473, name: Álgebra Linear Computacional, credits: 4, status: dispensada, at_risk: true, note: "se negado, EEL480 absorve em 2028/1"}
+      - {code: COS351, name: Lógica Matemática, credits: 4, status: a_cursar, planned: 2027/1}
+      - {code: EEL770, name: Sistemas Operacionais, credits: 5, status: em_curso}
+      - {code: EEL871, name: Banco de Dados, credits: 4, status: em_curso}
+      - {code: EEL878, name: Redes de Computadores I, credits: 4, status: em_curso}
+      - {code: IQG112, name: Química Experimental EE, credits: 2, status: dispensada}
+  - period: 6
+    courses:
+      - {code: COC361, name: Inteligência Computacional, credits: 4, status: a_cursar, planned: 2027/2}
+      - {code: COE363, name: Telecomunicações, credits: 4, status: a_cursar, planned: 2027/2}
+      - {code: COS360, name: Otimização, credits: 4, status: a_cursar, planned: 2027/1}
+      - {code: EEL873, name: Engenharia de Software, credits: 4, status: em_curso}
+      - {code: EEL879, name: Redes de Computadores II, credits: 4, status: a_cursar, planned: 2027/1}
+  - period: 7
+    courses:
+      - {code: COC472, name: Computação de Alto Desempenho, credits: 3, status: a_cursar, planned: 2027/2}
+      - {code: COP232, name: Gestão do Conhecimento I, credits: 4, status: a_cursar, planned: 2028/1, note: "retirada da dispensa (~20% de ementa)"}
+      - {code: COS470, name: Sistemas Distribuídos, credits: 4, status: a_cursar, planned: 2027/2}
+      - {code: EEL418, name: Programação Avançada, credits: 4, status: a_cursar, planned: 2027/2}
+      - {code: EEL882, name: Computação Gráfica, credits: 4, status: a_cursar, planned: 2027/2}
+  - period: 8
+    courses:
+      - {code: COP364, name: Empreendedorismo I, credits: 4, status: dispensada}
+      - {code: COS480, name: Construção de Bancos de Dados, credits: 4, status: a_cursar, planned: 2027/1}
+      - {code: COS482, name: Qualidade de Software, credits: 4, status: a_cursar, planned: 2027/1}
+      - {code: EEWX00, name: Projeto de Graduação, credits: 4, status: a_cursar, planned: 2027/2, note: "início 2027/2 (orientador até set/2027) · defesa 2028/1"}
+  - period: 9
+    courses:
+      - {code: EEWU00, name: Estágio Obrigatório, credits: 2, status: a_cursar}
+
+# O plano de 4 períodos até a colação.
+forward:
+  - semester: 2026/2
+    label: período 01 · em curso
+    note: 7 turmas · 30 cr · 32 h/sem · 3 âncoras
+    courses:
+      - {code: EEL871, name: Banco de Dados, role: ancora, unlocks: COS480}
+      - {code: EEL873, name: Engenharia de Software, role: ancora, unlocks: COS482}
+      - {code: EEL878, name: Redes de Computadores I, role: ancora, unlocks: EEL879}
+      - {code: EEL770, name: Sistemas Operacionais}
+      - {code: COS242, name: Teoria dos Grafos, note: "CRID: falta requisito"}
+      - {code: EEL580, name: Arquitetura de Computadores}
+      - {code: EEL874, name: Inteligência Artificial, role: optativa}
+  - semester: 2027/1
+    label: período 02
+    note: 6 disciplinas · 26 cr · 3 travas colhidas
+    courses:
+      - {code: COS480, name: Construção de Banco de Dados, note: "← EEL871"}
+      - {code: COS482, name: Qualidade de Software, note: "← EEL873"}
+      - {code: EEL879, name: Redes de Computadores II, note: "← EEL878"}
+      - {code: COS351, name: Lógica Matemática}
+      - {code: EEL881, name: Teoria da Computação}
+      - {code: COS360, name: Otimização}
+  - semester: 2027/2
+    label: período 03
+    note: 7 disciplinas · 28 cr · projeto inicia
+    courses:
+      - {code: COC361, name: Inteligência Computacional}
+      - {code: COE363, name: Telecomunicações}
+      - {code: COS470, name: Sistemas Distribuídos}
+      - {code: COC472, name: Computação de Alto Desempenho}
+      - {code: EEL882, name: Computação Gráfica}
+      - {code: EEL418, name: Programação Avançada}
+      - {code: COS471, name: Computadores e Sociedade}
+      - {code: EEWX00, name: Projeto de Graduação — início, role: projeto, note: "orientador até set/2027"}
+  - semester: 2028/1
+    label: período 04 · colação
+    note: 2 obrigatórias · defesa · ACE
+    courses:
+      - {code: EEL480, name: Sistemas Digitais, note: "coringa — absorve COC473 se negado"}
+      - {code: COP232, name: Gestão do Conhecimento I, note: "retirada da dispensa"}
+      - {code: COP481, name: Novos Modelos de Negócio, role: optativa}
+      - {code: OPT, name: Optativas restantes do elenco, role: optativa, note: "depende do excedente de Elétrica"}
+      - {code: EEWX00, name: Projeto de Graduação — defesa, role: projeto}
+      - {code: ACE, name: Atividades complementares — 405 h, role: ace}
