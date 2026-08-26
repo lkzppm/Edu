@@ -1,6 +1,6 @@
 # Edu — personal education center
 
-Self-hosted dashboard for Lucas's college classes: Google Classroom, Moodle UFRJ and Polimoodle in one place — unified to-do list, due dates and test dates. FastAPI + Postgres + Next.js, run with Docker Compose. Single user.
+Self-hosted dashboard for Lucas's college classes: Google Classroom, Moodle UFRJ, Polimoodle and Compasso in one place — unified to-do list, due dates and test dates. FastAPI + Postgres + Next.js, run with Docker Compose. Single user.
 
 ## Rules
 
@@ -10,7 +10,7 @@ Self-hosted dashboard for Lucas's college classes: Google Classroom, Moodle UFRJ
 4. A failing source degrades to last-good data with visible staleness; it never breaks the dashboard.
 5. Secrets only via git-ignored `.env` (`.env.example` kept current). Never log tokens, passwords or OAuth codes.
 6. Edu is strictly read-only against the platforms. Local task status (done/dismissed) is Edu-only and is never clobbered by a sync.
-7. UI: dark theme, teal-cyan accents (Fin's identity shifted to a greener blue), dates in `pt-BR` habits.
+7. UI: dark theme, teal-cyan accents (Fin's identity shifted to a greener blue), all copy and dates in English (2026-08-26).
 8. Conventional commits, small and scoped.
 
 ## Ports

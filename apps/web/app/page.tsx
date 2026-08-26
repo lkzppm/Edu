@@ -2,9 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ConnectorsPanel } from "@/components/connectors-panel";
-import { ExamsStrip, upcomingExams } from "@/components/exams";
+import { upcomingExams } from "@/components/exams";
 import { GradesPanel } from "@/components/grades";
-import { CourseLoad, dayKey, WeekStrip } from "@/components/overview";
+import { CourseLoad, dayKey, Planner } from "@/components/overview";
 import { QuickAdd, TaskList, TaskView, ViewSwitch } from "@/components/tasks";
 import { CalendarIcon, CloseIcon, PlugIcon, PlusIcon } from "@/components/ui";
 import { api } from "@/lib/api";
@@ -182,7 +182,7 @@ export default function Home() {
       )}
 
       {panel === "tasks" && (
-        <>
+        <div className="animate-msg-in">
       {/* Hero: week count · 7-day strip · next test */}
       <section className="flex flex-col gap-10 py-8 lg:flex-row lg:items-center lg:justify-between lg:gap-8">
         <div className="shrink-0">
@@ -210,8 +210,14 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="lg:mx-auto">
-          <WeekStrip tasks={tasks} colors={colors} selected={filterDay} onSelect={setFilterDay} />
+        <div className="min-w-0 lg:mx-8 lg:flex-1">
+          <Planner
+            tasks={tasks}
+            courses={courses}
+            colors={colors}
+            selected={filterDay}
+            onSelect={setFilterDay}
+          />
         </div>
 
         {nextExam && (
@@ -239,7 +245,7 @@ export default function Home() {
               {filterCourse != null && (
                 <button
                   onClick={() => setFilterCourse(null)}
-                  className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-mono text-[11px] transition-opacity hover:opacity-80"
+                  className="animate-chip-in inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-mono text-[11px] transition-opacity hover:opacity-80"
                   style={{
                     backgroundColor: `${colors.get(filterCourse) ?? "#71717a"}22`,
                     color: colors.get(filterCourse) ?? "#a1a1aa",
@@ -256,7 +262,7 @@ export default function Home() {
               {filterDay != null && (
                 <button
                   onClick={() => setFilterDay(null)}
-                  className="inline-flex items-center gap-1.5 rounded-full bg-accent/10 px-2.5 py-1 font-mono text-[11px] text-cyan-300 transition-colors hover:bg-accent/20"
+                  className="animate-chip-in inline-flex items-center gap-1.5 rounded-full bg-accent/10 px-2.5 py-1 font-mono text-[11px] text-cyan-300 transition-colors hover:bg-accent/20"
                   title="clear day filter"
                 >
                   {fmtDay(new Date(filterDay).toISOString())}
@@ -300,6 +306,8 @@ export default function Home() {
           )}
           {data ? (
             <TaskList
+              // remount on any filter/view change so the list eases in
+              key={`${view}-${filterDay ?? "all"}-${filterCourse ?? "all"}`}
               tasks={listTasks}
               colors={colors}
               view={view}
@@ -312,14 +320,6 @@ export default function Home() {
         </section>
 
         <aside className="space-y-12">
-          {exams.length > 0 && (
-            <section>
-              <div className="mb-5">
-                <SectionTitle>Provas &amp; testes</SectionTitle>
-              </div>
-              <ExamsStrip exams={exams.slice(0, 5)} colors={colors} vertical />
-            </section>
-          )}
           {courses.length > 0 && (
             <section>
               <div className="mb-5">
@@ -335,7 +335,7 @@ export default function Home() {
           )}
         </aside>
       </div>
-        </>
+        </div>
       )}
 
       <ConnectorsPanel open={panelOpen} onClose={() => setPanelOpen(false)} onChanged={load} />

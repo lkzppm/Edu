@@ -1,16 +1,16 @@
 const DAY_MS = 86_400_000;
 
-/** "seg., 25 de ago." — pt-BR habits (spec/ui.md). */
+/** "Mon, Aug 25" — English copy everywhere (spec/ui.md, 2026-08-26). */
 export function fmtDay(iso: string): string {
-  return new Intl.DateTimeFormat("pt-BR", {
+  return new Intl.DateTimeFormat("en-US", {
     weekday: "short",
     day: "numeric",
     month: "short",
   }).format(new Date(iso));
 }
 
-/** "25 de ago., 14:00" — time included only when it carries meaning
- * (23:59/23:00 end-of-day defaults are noise). */
+/** "Mon, Aug 25, 14:00" — time included only when it carries meaning
+ * (23:59/23:00 end-of-day defaults are noise). 24h clock: compact in mono. */
 export function fmtDue(iso: string): string {
   const date = new Date(iso);
   const day = fmtDay(iso);
@@ -18,13 +18,15 @@ export function fmtDue(iso: string): string {
   const minutes = date.getMinutes();
   const endOfDay = (hours === 23 && minutes >= 55) || (hours === 0 && minutes === 0);
   if (endOfDay) return day;
-  const time = new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit" }).format(
-    date
-  );
+  const time = new Intl.DateTimeFormat("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).format(date);
   return `${day}, ${time}`;
 }
 
-/** Mono relative chip: "em 3 d" / "em 5 h" / "há 2 d". */
+/** Mono relative chip: "in 3 d" / "in 5 h" / "2 d ago". */
 export function fmtRelative(iso: string): string {
   const diff = new Date(iso).getTime() - Date.now();
   const abs = Math.abs(diff);
@@ -34,13 +36,13 @@ export function fmtRelative(iso: string): string {
       : abs >= 3_600_000
         ? `${Math.round(abs / 3_600_000)} h`
         : `${Math.max(1, Math.round(abs / 60_000))} min`;
-  return diff >= 0 ? `em ${unit}` : `há ${unit}`;
+  return diff >= 0 ? `in ${unit}` : `${unit} ago`;
 }
 
 /** "3d 07h" countdown for the next-test hero card. */
 export function fmtCountdown(iso: string): string {
   const diff = new Date(iso).getTime() - Date.now();
-  if (diff <= 0) return "agora";
+  if (diff <= 0) return "now";
   const days = Math.floor(diff / DAY_MS);
   const hours = Math.floor((diff % DAY_MS) / 3_600_000);
   if (days > 0) return `${days}d ${String(hours).padStart(2, "0")}h`;
