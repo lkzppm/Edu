@@ -17,7 +17,7 @@ function num(value: string | null): number {
 }
 
 function fmtPts(n: number): string {
-  return n.toLocaleString("pt-BR", { maximumFractionDigits: 2 });
+  return n.toLocaleString("en-US", { maximumFractionDigits: 2 });
 }
 
 /** Points math: how much of the course's total is banked, gone, or still open. */
@@ -114,7 +114,7 @@ function CourseCard({ course, color }: { course: CourseGrades; color: string }) 
           </p>
           <p className="mt-0.5 font-mono text-[11px] text-zinc-500">
             {course.course_code && <span className="mr-2">{course.course_code}</span>}
-            {s.gradedCount}/{course.items.length} avaliados
+            {s.gradedCount}/{course.items.length} graded
           </p>
         </div>
         <p className="shrink-0 font-mono text-3xl font-semibold text-zinc-100">
@@ -127,27 +127,27 @@ function CourseCard({ course, color }: { course: CourseGrades; color: string }) 
         {s.earned > 0 && (
           <div
             style={{ width: seg(s.earned), backgroundColor: color }}
-            title={`ganho: ${fmtPts(s.earned)} pts`}
+            title={`earned: ${fmtPts(s.earned)} pts`}
           />
         )}
         {s.lost > 0 && (
           <div
             style={{ width: seg(s.lost), backgroundColor: `${color}${LOST_ALPHA}` }}
-            title={`perdido: ${fmtPts(s.lost)} pts`}
+            title={`lost: ${fmtPts(s.lost)} pts`}
           />
         )}
         {s.pending > 0 && (
           <div
             className="bg-white/[0.08]"
             style={{ width: seg(s.pending) }}
-            title={`em jogo: ${fmtPts(s.pending)} pts`}
+            title={`in play: ${fmtPts(s.pending)} pts`}
           />
         )}
       </div>
       <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 font-mono text-[11px] text-zinc-500">
         <span className="inline-flex items-center gap-1.5">
           <span className="h-2 w-2 rounded-full" style={{ backgroundColor: color }} />
-          {fmtPts(s.earned)} ganho
+          {fmtPts(s.earned)} earned
         </span>
         {s.lost > 0 && (
           <span className="inline-flex items-center gap-1.5">
@@ -155,12 +155,12 @@ function CourseCard({ course, color }: { course: CourseGrades; color: string }) 
               className="h-2 w-2 rounded-full"
               style={{ backgroundColor: `${color}${LOST_ALPHA}` }}
             />
-            {fmtPts(s.lost)} perdido
+            {fmtPts(s.lost)} lost
           </span>
         )}
         <span className="inline-flex items-center gap-1.5">
           <span className="h-2 w-2 rounded-full bg-white/20" />
-          {fmtPts(s.pending)} em jogo
+          {fmtPts(s.pending)} in play
         </span>
       </div>
 
@@ -176,7 +176,7 @@ function CourseCard({ course, color }: { course: CourseGrades; color: string }) 
           onClick={() => setExpanded(!expanded)}
           className="mt-2 font-mono text-[11px] text-zinc-600 transition-colors hover:text-cyan-300"
         >
-          {expanded ? "esconder não avaliados" : `+ ${ungraded} a avaliar`}
+          {expanded ? "hide ungraded" : `+ ${ungraded} ungraded`}
         </button>
       )}
     </section>

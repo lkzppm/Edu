@@ -3,16 +3,16 @@
 import { FormEvent, useState } from "react";
 import { Button, CheckIcon, LinkOutIcon, LineInput } from "@/components/ui";
 import { api } from "@/lib/api";
-import { dueGroup, fmtDue, fmtRelative, GROUP_LABELS, GROUP_ORDER } from "@/lib/format";
+import { dueGroup, fmtDay, fmtDue, fmtRelative, GROUP_LABELS, GROUP_ORDER } from "@/lib/format";
 import { Task } from "@/lib/types";
 
 const KIND_LABELS: Record<string, string> = {
-  assignment: "tarefa",
+  assignment: "assignment",
   quiz: "quiz",
-  exam: "prova",
-  event: "evento",
-  activity: "atividade",
-  manual: "pessoal",
+  exam: "exam",
+  event: "event",
+  activity: "activity",
+  manual: "personal",
 };
 
 function KindTag({ kind }: { kind: string }) {
@@ -204,6 +204,7 @@ export function TaskList({
   onToggle: (task: Task) => void;
   onDismiss: (task: Task) => void;
 }) {
+  const [opened, setOpened] = useState<Partial<Record<string, boolean>>>({});
   const pending = tasks.filter((t) => t.status === "todo");
   const done = tasks
     .filter((t) => t.status === "done")
@@ -244,14 +245,18 @@ export function TaskList({
     return <p className="py-6 text-sm text-zinc-500">All clear — nothing pending.</p>;
 
   return (
-    <div className="space-y-7">
+    <div className="animate-msg-in space-y-7">
       {GROUP_ORDER.map((group) => {
         const list = groups.get(group)!;
         if (!list.length) return null;
+        // The far horizon starts folded — the near-term list is the workspace;
+        // "Later"/"No due date" would otherwise triple the page.
+        const collapsible = (group === "later" || group === "none") && list.length > 3;
+        const collapsed = collapsible && !opened[group];
         return (
           <div key={group}>
             <h3
-              className={`mb-1.5 font-display text-[11px] font-semibold uppercase tracking-[0.2em] ${
+              className={`mb-1.5 flex items-center font-display text-[11px] font-semibold uppercase tracking-[0.2em] ${
                 group === "overdue"
                   ? "text-red-400"
                   : group === "today"
@@ -261,18 +266,56 @@ export function TaskList({
             >
               {GROUP_LABELS[group]}
               <span className="ml-2 font-mono text-[10px] text-zinc-600">{list.length}</span>
+              {collapsible && (
+                <button
+                  onClick={() => setOpened((prev) => ({ ...prev, [group]: collapsed }))}
+                  className="ml-3 font-mono text-[10px] lowercase tracking-normal text-zinc-600 transition-colors hover:text-cyan-300"
+                >
+                  {collapsed ? "show" : "hide"}
+                </button>
+              )}
             </h3>
-            <div>
-              {list.map((task) => (
-                <TaskRow
-                  key={task.id}
-                  task={task}
-                  color={task.course_id != null ? colors.get(task.course_id) : undefined}
-                  onToggle={onToggle}
-                  onDismiss={onDismiss}
-                />
-              ))}
-            </div>
+            {collapsed ? (
+              <button
+                onClick={() => setOpened((prev) => ({ ...prev, [group]: true }))}
+                className="animate-fade-in flex w-full items-center gap-3 rounded-xl px-2 py-2.5 text-left transition-colors hover:bg-white/[0.03]"
+                title="show these tasks"
+              >
+                <span className="flex items-center gap-1.5">
+                  {list.slice(0, 12).map((t) => (
+                    <span
+                      key={t.id}
+                      className={`inline-block ${
+                        t.kind === "exam" || t.kind === "quiz"
+                          ? "h-2 w-2 rotate-45 rounded-[1px]"
+                          : "h-2 w-2 rounded-full"
+                      }`}
+                      style={{
+                        backgroundColor:
+                          (t.course_id != null && colors.get(t.course_id)) || "#71717a",
+                      }}
+                    />
+                  ))}
+                </span>
+                <span className="font-mono text-[11px] text-zinc-500">
+                  {group === "later" && list[0].due_at && list[list.length - 1].due_at
+                    ? `${fmtDay(list[0].due_at)} – ${fmtDay(list[list.length - 1].due_at!)}`
+                    : `${list.length} tasks`}
+                </span>
+              </button>
+            ) : (
+              <div className={collapsible ? "animate-msg-in" : undefined}>
+                {list.map((task) => (
+                  <TaskRow
+                    key={task.id}
+                    task={task}
+                    color={task.course_id != null ? colors.get(task.course_id) : undefined}
+                    onToggle={onToggle}
+                    onDismiss={onDismiss}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         );
       })}
