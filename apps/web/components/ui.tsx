@@ -171,6 +171,13 @@ export const GlobeIcon = ({ className }: { className?: string }) => (
   </Icon>
 );
 
+export const CompassIcon = ({ className }: { className?: string }) => (
+  <Icon className={className}>
+    <circle cx="12" cy="12" r="10" />
+    <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" />
+  </Icon>
+);
+
 export const CalendarIcon = ({ className }: { className?: string }) => (
   <Icon className={className}>
     <rect x="3" y="4" width="18" height="18" rx="2" />

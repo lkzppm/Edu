@@ -6,6 +6,7 @@ import {
   Button,
   CapIcon,
   CloseIcon,
+  CompassIcon,
   EyeIcon,
   EyeOffIcon,
   GlobeIcon,
@@ -19,7 +20,7 @@ import { api } from "@/lib/api";
 import { timeAgo } from "@/lib/format";
 import { Conn, ConnectorsResponse } from "@/lib/types";
 
-type TypeKey = "classroom" | "moodle-ufrj" | "polimoodle" | "moodle";
+type TypeKey = "classroom" | "moodle-ufrj" | "polimoodle" | "compasso" | "moodle";
 
 const TYPES: Record<
   TypeKey,
@@ -27,7 +28,7 @@ const TYPES: Record<
     title: string;
     hint: string;
     icon: ComponentType<{ className?: string }>;
-    api: "classroom" | "moodle";
+    api: "classroom" | "moodle" | "compasso";
     baseUrl?: string;
   }
 > = {
@@ -52,6 +53,12 @@ const TYPES: Record<
     icon: BookIcon,
     api: "moodle",
     baseUrl: "https://moodle.poli.ufrj.br",
+  },
+  compasso: {
+    title: "Compasso",
+    hint: "compasso.ufrj.br course page (public schedule sheet)",
+    icon: CompassIcon,
+    api: "compasso",
   },
   moodle: {
     title: "Other Moodle",
@@ -118,7 +125,8 @@ function AccountCard({
   onDisconnect: () => void;
   busy: boolean;
 }) {
-  const Ico = conn.name === "classroom" ? CapIcon : BookIcon;
+  const Ico =
+    conn.name === "classroom" ? CapIcon : conn.name === "compasso" ? CompassIcon : BookIcon;
   return (
     <section className="animate-chip-in">
       <div className="flex items-center justify-between">
@@ -183,6 +191,7 @@ export function ConnectorsPanel({
   const [data, setData] = useState<ConnectorsResponse | null>(null);
   const [adding, setAdding] = useState<"picker" | TypeKey | null>(null);
   const [baseUrl, setBaseUrl] = useState("");
+  const [pageUrl, setPageUrl] = useState("");
   const [authMode, setAuthMode] = useState<"token" | "password">("token");
   const [token, setToken] = useState("");
   const [username, setUsername] = useState("");
@@ -222,6 +231,7 @@ export function ConnectorsPanel({
     setUsername("");
     setPassword("");
     setBaseUrl("");
+    setPageUrl("");
     setAuthMode("token");
   };
 
@@ -273,6 +283,14 @@ export function ConnectorsPanel({
     }
     action(type, () => api("/connectors/moodle", { method: "POST", body: JSON.stringify(body) }), true);
   };
+
+  const connectCompasso = () =>
+    action(
+      "compasso",
+      () =>
+        api("/connectors/compasso", { method: "POST", body: JSON.stringify({ page_url: pageUrl }) }),
+      true
+    );
 
   const accounts = data?.connectors ?? [];
 
@@ -375,6 +393,32 @@ export function ConnectorsPanel({
             demo
           </TextBtn>
         </div>
+      );
+    }
+    if (type === "compasso") {
+      return (
+        <form
+          className="flex flex-col gap-4"
+          onSubmit={(e) => {
+            e.preventDefault();
+            connectCompasso();
+          }}
+        >
+          <LineInput
+            placeholder="https://www.compasso.ufrj.br/disciplinas/eel580"
+            value={pageUrl}
+            onChange={(e) => setPageUrl(e.target.value)}
+            required
+          />
+          <p className="text-xs text-zinc-500">
+            The course page's public schedule sheet becomes tasks and test dates — no login needed.
+          </p>
+          <div>
+            <Button type="submit" disabled={busy === "compasso" || pageUrl.length < 12}>
+              Connect
+            </Button>
+          </div>
+        </form>
       );
     }
     return moodleForm(type);
