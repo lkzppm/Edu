@@ -62,3 +62,16 @@ Parsing (pinned to the real EEL580 sheet in tests):
 - Plain lectures, "Não houve aula", "Autoestudo" produce no tasks — the schedule itself is not a to-do list.
 
 No grades (the sheet has none) and no per-task completion at the source (the sheet's ✓ column tracks lectures given, not the student's work) — done/dismissed is purely local, which rule 6 already guarantees.
+
+## cowork (2026-08-26)
+
+Not a platform — the **Claude Cowork workspace**: the local directory where coursework is produced with Claude (`~/Desktop/UFRJ`), bind-mounted **read-only** into the api (`COWORK_DIR` host path → `WORKSPACE_DIR=/workspace`; Edu never writes there). Single account instance; connect just validates the mount and pattern. Hourly schedule slot (local fs, cheap) plus the usual refresh paths, and `POST /connectors/cowork/sync` is pinged by `tools/cowork-push.sh` after each replication push.
+
+**The pattern** (also documented in the workspace's own README, so cowork sessions preserve it):
+
+- `classes/CODIGO_Nome/CONTEXT.md` — **YAML frontmatter** is the contract: `code`, `name`, `semester`, `turma`, `credits`, `kind` (`obrigatoria`|`optativa`), `period`, `anchor` (course it unlocks), `flags`, `professor`, `contact`, `evaluation`, `platform`, `platform_url` (canonical hostname), `links`, `schedule` (`{day: mon…sun, start, end, room}`). The prose below the frontmatter belongs to Claude and is never parsed.
+- `classes/*/listas/AAAA-MM-DD_Slug/` — each delivery folder becomes a WorkItem (date from the name, title from the slug, `has_pdf` = delivery built).
+
+Sync **fully replaces** SemesterClass + WorkItem rows (they mirror the filesystem), then stamps `Course.class_code` by matching each platform course to a class — by course code first, else by normalized `platform_url` (scheme stripped, `polimoodle.poli.ufrj.br` aliased to the canonical `moodle.poli.ufrj.br`). Classroom courses carry no code, so their `alternateLink` is what matches. A class with `platform: none` (Redes I) exists only in the registry — and still shows up across Edu.
+
+**Homelab**: same connector, different mount — the dir is replicated one-way by `tools/cowork-push.sh` (fswatch → rsync --delete → sync ping) from the machines that edit it; the homelab replica is never written locally. See spec/deploy.md.

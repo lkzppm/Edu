@@ -40,6 +40,8 @@ def _migrate(engine) -> None:
         # 2026-08-24: grade date + activity deep link on grade items.
         conn.execute(text("ALTER TABLE grade_items ADD COLUMN IF NOT EXISTS graded_at timestamptz"))
         conn.execute(text("ALTER TABLE grade_items ADD COLUMN IF NOT EXISTS url varchar(500)"))
+        # 2026-08-26: canonical class linking (cowork connector).
+        conn.execute(text("ALTER TABLE courses ADD COLUMN IF NOT EXISTS class_code varchar(20)"))
 
 
 def get_db():

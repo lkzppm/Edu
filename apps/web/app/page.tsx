@@ -1,7 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { CollegePanel, nextClass } from "@/components/college";
 import { ConnectorsPanel } from "@/components/connectors-panel";
+import { CoworkButton } from "@/components/cowork";
 import { upcomingExams } from "@/components/exams";
 import { GradesPanel } from "@/components/grades";
 import { CourseLoad, dayKey, Planner } from "@/components/overview";
@@ -11,6 +13,7 @@ import { api } from "@/lib/api";
 import { courseColorMap } from "@/lib/colors";
 import { fmtCountdown, fmtDay, fmtDue } from "@/lib/format";
 import {
+  CollegeResponse,
   Course,
   ConnectorsResponse,
   GradesResponse,
@@ -26,14 +29,16 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
   );
 }
 
-type Panel = "tasks" | "grades";
+type Panel = "tasks" | "grades" | "college";
 
 export default function Home() {
   const [panel, setPanel] = useState<Panel>("tasks");
   const [data, setData] = useState<TasksResponse | null>(null);
   const [grades, setGrades] = useState<GradesResponse | null>(null);
+  const [college, setCollege] = useState<CollegeResponse | null>(null);
   const [courses, setCourses] = useState<Course[]>([]);
   const [connCount, setConnCount] = useState(0);
+  const [cowork, setCowork] = useState<import("@/lib/types").Conn | null>(null);
   const [anySyncing, setAnySyncing] = useState(false);
   const [filterCourse, setFilterCourse] = useState<number | null>(null);
   const [filterDay, setFilterDay] = useState<number | null>(null);
@@ -44,16 +49,19 @@ export default function Home() {
 
   const load = useCallback(async () => {
     try {
-      const [tasksRes, coursesRes, connRes, gradesRes] = await Promise.all([
+      const [tasksRes, coursesRes, connRes, gradesRes, collegeRes] = await Promise.all([
         api<TasksResponse>("/tasks"),
         api<Course[]>("/courses"),
         api<ConnectorsResponse>("/connectors"),
         api<GradesResponse>("/grades"),
+        api<CollegeResponse>("/college"),
       ]);
       setData(tasksRes);
       setGrades(gradesRes);
+      setCollege(collegeRes);
       setCourses(coursesRes.filter((c) => !c.hidden));
-      setConnCount(connRes.connectors.length);
+      setCowork(connRes.connectors.find((c) => c.name === "cowork") ?? null);
+      setConnCount(connRes.connectors.filter((c) => c.name !== "cowork").length);
       setAnySyncing(connRes.connectors.some((c) => c.sync_status === "syncing"));
       setError(null);
     } catch (e) {
@@ -132,16 +140,20 @@ export default function Home() {
   };
 
   const summary = data?.summary;
+  const upcoming = useMemo(
+    () => (college ? nextClass(college.classes) : null),
+    [college]
+  );
 
   return (
     <main className="mx-auto min-h-screen max-w-6xl px-5 pb-28">
       {/* Navbar */}
       <header className="flex items-center justify-between py-6">
-        <h1 className="font-display text-xl font-semibold tracking-tight">
+        <h1 className="flex-1 font-display text-xl font-semibold tracking-tight">
           Edu<span className="text-accent">.</span>
         </h1>
         <nav className="flex gap-1 rounded-xl bg-white/[0.04] p-1 font-display text-xs font-medium">
-          {(["tasks", "grades"] as const).map((p) => (
+          {(["tasks", "grades", "college"] as const).map((p) => (
             <button
               key={p}
               onClick={() => setPanel(p)}
@@ -155,6 +167,13 @@ export default function Home() {
             </button>
           ))}
         </nav>
+        <div className="flex flex-1 items-center justify-end gap-1">
+        <CoworkButton
+          conn={cowork}
+          classesCount={college?.classes.length ?? 0}
+          deliveries={(college?.classes ?? []).reduce((n, c) => n + c.work_items.length, 0)}
+          onChanged={load}
+        />
         <button
           onClick={() => setPanelOpen(true)}
           className="relative rounded-lg p-2 text-zinc-400 transition-colors hover:bg-white/5 hover:text-zinc-100"
@@ -167,6 +186,7 @@ export default function Home() {
             </span>
           )}
         </button>
+        </div>
       </header>
 
       {error && (
@@ -178,6 +198,12 @@ export default function Home() {
       {panel === "grades" && (
         <div className="animate-msg-in pt-4">
           <GradesPanel courses={grades?.courses ?? []} colors={colors} />
+        </div>
+      )}
+
+      {panel === "college" && college && (
+        <div className="animate-msg-in pt-4">
+          <CollegePanel data={college} colors={colors} />
         </div>
       )}
 
@@ -208,6 +234,12 @@ export default function Home() {
               </span>
             )}
           </div>
+          {upcoming && (
+            <p className="mt-4 font-mono text-xs text-zinc-500">
+              <span className="text-zinc-600">class </span>
+              {upcoming}
+            </p>
+          )}
         </div>
 
         <div className="min-w-0 lg:mx-8 lg:flex-1">

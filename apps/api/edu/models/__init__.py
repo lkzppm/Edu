@@ -53,6 +53,9 @@ class Course(Base):
     code: Mapped[str | None] = mapped_column(String(80))  # short name, e.g. COS110
     url: Mapped[str | None] = mapped_column(String(300))
     hidden: Mapped[bool] = mapped_column(Boolean, default=False)  # user toggle; still syncs
+    # Canonical class this platform course belongs to (SemesterClass.code),
+    # assigned by the cowork sync via platform_url/code matching.
+    class_code: Mapped[str | None] = mapped_column(String(20))
 
     account: Mapped[Account] = relationship(back_populates="courses")
     tasks: Mapped[list["Task"]] = relationship(
@@ -113,3 +116,51 @@ class Task(Base):
     )
 
     course: Mapped[Course | None] = relationship(back_populates="tasks")
+
+
+class SemesterClass(Base):
+    """Canonical class registry, mirrored from the Claude Cowork workspace
+    (CONTEXT.md frontmatter). Pure mirror — sync fully replaces rows."""
+
+    __tablename__ = "semester_classes"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    code: Mapped[str] = mapped_column(String(20), unique=True)
+    name: Mapped[str] = mapped_column(String(200))
+    semester: Mapped[str | None] = mapped_column(String(10))
+    turma: Mapped[str | None] = mapped_column(String(20))
+    credits: Mapped[int | None]
+    kind: Mapped[str | None] = mapped_column(String(20))  # obrigatoria | optativa
+    period: Mapped[int | None]
+    anchor: Mapped[str | None] = mapped_column(String(20))  # course this one unlocks
+    flags: Mapped[list] = mapped_column(JSON, default=list)
+    professor: Mapped[str | None] = mapped_column(String(200))
+    contact: Mapped[str | None] = mapped_column(String(200))
+    evaluation: Mapped[str | None] = mapped_column(Text)
+    platform: Mapped[str | None] = mapped_column(String(20))
+    platform_url: Mapped[str | None] = mapped_column(String(300))
+    links: Mapped[list] = mapped_column(JSON, default=list)  # [{label, url}]
+    schedule: Mapped[list] = mapped_column(JSON, default=list)  # [{day, start, end, room}]
+    workspace_path: Mapped[str | None] = mapped_column(String(500))
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
+    )
+
+
+class WorkItem(Base):
+    """One delivery folder in the cowork workspace (listas/AAAA-MM-DD_Slug).
+    Pure mirror of the filesystem — sync fully replaces rows."""
+
+    __tablename__ = "work_items"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    class_code: Mapped[str] = mapped_column(String(20))
+    date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    slug: Mapped[str] = mapped_column(String(200))
+    title: Mapped[str] = mapped_column(String(200))
+    path: Mapped[str] = mapped_column(String(500))
+    files: Mapped[int] = mapped_column(default=0)
+    has_pdf: Mapped[bool] = mapped_column(Boolean, default=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
+    )

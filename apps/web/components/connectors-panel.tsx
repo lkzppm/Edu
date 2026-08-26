@@ -292,7 +292,7 @@ export function ConnectorsPanel({
       true
     );
 
-  const accounts = data?.connectors ?? [];
+  const accounts = (data?.connectors ?? []).filter((c) => c.name !== "cowork");
 
   const moodleForm = (type: TypeKey): ReactNode => {
     const preset = TYPES[type].baseUrl;

@@ -37,3 +37,9 @@ One gradebook entry per row, `(course_id, external_id)` unique (`gi:<id>` from M
 3. A task done in Edu but not at the source **stays done** (work may be handled off-platform).
 4. Synced tasks that disappear at the source are kept (platforms hide old items); `dismissed` is the user's delete for synced tasks. Manual tasks can be hard-deleted.
 5. All datetimes stored UTC; Moodle epochs and Classroom date/time parts converted at the connector boundary.
+
+## SemesterClass & WorkItem (cowork mirrors, 2026-08-26)
+
+`semester_classes` — the canonical class registry, one row per `CONTEXT.md` frontmatter (`code` unique): name, semester, turma, credits, kind, period, `anchor`, `flags`, professor, contact, evaluation, platform, `platform_url`, `links` JSON, `schedule` JSON (`{day,start,end,room}`), workspace_path. `work_items` — one row per `listas/AAAA-MM-DD_Slug/` folder: class_code, date, slug, title, path, files, has_pdf. Both are **pure filesystem mirrors** — sync fully replaces them, no local state.
+
+`courses.class_code` (nullable) links each platform course to its canonical class, re-derived on every cowork sync (code match, else normalized platform-URL match). The degree plan is **not** in the DB: `apps/api/edu/data/degree_plan.yml` is the editable source of truth, served (with computed summary) by `GET /college`.

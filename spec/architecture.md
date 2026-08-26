@@ -7,6 +7,7 @@ Google OAuth ─────▶ classroom connector ──▶ Google Classroom A
 Moodle token ─────▶ moodle connector ─────▶ moodle.cos.ufrj.br  (WS REST)
 Moodle token ─────▶ moodle connector ─────▶ moodle.poli.ufrj.br (Polimoodle)
 page URL ─────────▶ compasso connector ───▶ compasso.ufrj.br page + public Google Sheet CSV
+bind mount (ro) ──▶ cowork connector ─────▶ ~/Desktop/UFRJ workspace (CONTEXT.md pattern)
                           │
                           ▼
              ┌─────────────────────────┐

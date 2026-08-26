@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from edu.config import get_settings
 from edu.connectors import classroom as classroom_connector
 from edu.connectors import compasso as compasso_connector
+from edu.connectors import cowork as cowork_connector
 from edu.connectors import moodle as moodle_connector
 from edu.connectors.base import ConnectorError, run_sync, run_sync_account
 from edu.db import get_db
@@ -21,7 +22,7 @@ from edu.schemas import (
 
 router = APIRouter()
 
-CONNECTOR_NAMES = ("moodle", "classroom", "compasso")
+CONNECTOR_NAMES = ("moodle", "classroom", "compasso", "cowork")
 
 # Page-open refresh only touches accounts older than this — opening the
 # dashboard repeatedly must never hammer the platforms.
@@ -153,6 +154,33 @@ def connect_compasso(
         base_url=page_url,
         config={"page_url": page_url},
     )
+    tasks.add_task(run_sync_account, account.id)
+    return {"status": "syncing", "id": account.id}
+
+
+@router.post("/cowork", status_code=202)
+def connect_cowork(tasks: BackgroundTasks, session: Session = Depends(get_db)):
+    """No credentials — validates the mounted workspace follows the pattern.
+    Single instance: reconnecting reuses the existing account."""
+    try:
+        cowork_connector.probe()
+    except ConnectorError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    existing = session.scalar(select(Account).where(Account.connector == "cowork"))
+    if existing is not None:
+        existing.sync_status = "syncing"
+        existing.last_error = None
+        session.commit()
+        account = existing
+    else:
+        account = _create_account(
+            session,
+            "cowork",
+            institution="Claude Cowork",
+            display_name="Claude Cowork",
+            base_url=None,
+            config={"dir": get_settings().workspace_dir},
+        )
     tasks.add_task(run_sync_account, account.id)
     return {"status": "syncing", "id": account.id}
 

@@ -71,6 +71,10 @@ def start_scheduler() -> BackgroundScheduler:
     sched.add_job(
         lambda: run_sync("compasso"), "interval", hours=3, id="compasso", misfire_grace_time=600
     )
+    # Local filesystem — cheap, so a tighter interval keeps cowork fresh.
+    sched.add_job(
+        lambda: run_sync("cowork"), "interval", hours=1, id="cowork", misfire_grace_time=600
+    )
     # Interval jobs resume on wake, so this heals whatever the intervals missed.
     sched.add_job(job_catchup, "interval", minutes=10, id="catchup", misfire_grace_time=300)
     sched.start()

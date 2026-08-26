@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session, joinedload
 from edu.config import get_settings
 from edu.db import get_db
 from edu.models import Course, Task
+from edu.routes.college import class_display
 from edu.schemas import ManualTaskRequest, TaskOut, TasksResponse, TasksSummary, TaskUpdateRequest
 
 router = APIRouter()
@@ -15,13 +16,17 @@ router = APIRouter()
 STATUSES = ("todo", "done", "dismissed")
 
 
-def _out(task: Task) -> TaskOut:
+def _out(task: Task, registry: dict[str, str] | None = None) -> TaskOut:
     course = task.course
+    name = course.name if course else None
+    code = course.code if course else None
+    if course and registry and course.class_code and course.class_code in registry:
+        name, code = registry[course.class_code], course.class_code
     return TaskOut(
         id=task.id,
         course_id=task.course_id,
-        course_name=course.name if course else None,
-        course_code=course.code if course else None,
+        course_name=name,
+        course_code=code,
         connector=course.account.connector if course else None,
         kind=task.kind,
         title=task.title,
@@ -69,7 +74,8 @@ def list_tasks(course_id: int | None = None, session: Session = Depends(get_db))
     if course_id is not None:
         query = query.where(Task.course_id == course_id)
     tasks = list(session.scalars(query))
-    return TasksResponse(summary=_summary(tasks), tasks=[_out(t) for t in tasks])
+    registry = class_display(session)
+    return TasksResponse(summary=_summary(tasks), tasks=[_out(t, registry) for t in tasks])
 
 
 @router.post("", response_model=TaskOut, status_code=201)

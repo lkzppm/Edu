@@ -1,6 +1,6 @@
 # Edu — personal education center
 
-Self-hosted dashboard for Lucas's college classes: Google Classroom, Moodle UFRJ, Polimoodle and Compasso in one place — unified to-do list, due dates and test dates. FastAPI + Postgres + Next.js, run with Docker Compose. Single user.
+Self-hosted dashboard for Lucas's college classes: Google Classroom, Moodle UFRJ, Polimoodle, Compasso and the Claude Cowork workspace (`~/Desktop/UFRJ`, read-only mount) in one place — unified to-do list, due dates and test dates. FastAPI + Postgres + Next.js, run with Docker Compose. Single user.
 
 ## Rules
 
@@ -28,3 +28,4 @@ Runs beside Fin: api on **8001**, web on **3001** (Fin owns 8000/3000).
 | [spec/standards.md](spec/standards.md) | Code style, testing, git/config conventions |
 | [spec/ui.md](spec/ui.md) | Dark/teal theme, dashboard layout, UX principles |
 | [spec/roadmap.md](spec/roadmap.md) | Phased plan and current status |
+| [spec/deploy.md](spec/deploy.md) | Homelab deploy: Tailscale-only access, security model, backups |
