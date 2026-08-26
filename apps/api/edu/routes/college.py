@@ -17,6 +17,13 @@ router = APIRouter()
 PLAN_PATH = Path(__file__).resolve().parent.parent / "data" / "degree_plan.yml"
 
 
+def class_display(session: Session) -> dict[str, str]:
+    """class_code → canonical registry name. Platform courses linked to a
+    class display the registry identity (a Classroom course named
+    "Redes20262" reads as EEL878 · Redes de Computadores I everywhere)."""
+    return dict(session.execute(select(SemesterClass.code, SemesterClass.name)).all())
+
+
 def load_plan() -> dict:
     try:
         plan = yaml.safe_load(PLAN_PATH.read_text(encoding="utf-8")) or {}

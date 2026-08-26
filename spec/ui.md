@@ -26,7 +26,7 @@ Container is `max-w-6xl` (matches Fin). Two-column on `lg`: tasks (2/3) + visual
 
 ## Course colors
 
-Courses get stable entity colors from `lib/colors.ts` slots (validated dark-surface palette inherited from Fin): `#3987e5`, `#c98500`, `#d55181`, `#199e70`, `#9085e9`, `#d95926`, `#b91d63`, `#008300` — assigned by course id order per account, never reshuffled by rank.
+Courses get stable entity colors from `lib/colors.ts` slots — **cool-only** (2026-08-30, Lucas: blue/green/purple tones, no warm hues), passing all six dataviz checks on the dark surface (adjacent CVD ΔE 8.6+, normal-vision 16.4+, ≥3:1 contrast): `#3f8fe0` blue, `#2bab81` green, `#8f7ff0` lavender, `#2d9fb8` teal, `#7d52d8` violet, `#4aa94a` leaf green, `#2f6fb8` deep blue, `#a678e0` light purple — hue families alternate and lightness ladders so neighbors stay distinct. Assigned by course id order per account, never reshuffled by rank. (Supersedes Fin's warm-slot palette; the "lost points" 35%-alpha rule in Grades is hue-agnostic and carries over.)
 
 ## Principles
 
