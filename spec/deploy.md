@@ -47,3 +47,14 @@ Update = `git pull` + the same `up -d --build`. All services have `restart: unle
 ## Backups
 
 Nightly host cron: `docker compose exec -T db pg_dump -U edu edu | gzip` to a dated file; keep 14 days; sync the backup dir off-machine (any synced folder or a second tailnet device). Task status lives only in this DB (rule 6), so the dump is the only copy — verify a restore once after first setup.
+
+## Cowork workspace replication
+
+The cowork connector reads a directory (`COWORK_DIR` → mounted at `/workspace`, read-only). On the homelab that directory is a **one-way replica**: only the machines where the work happens write it; the homelab never alters it.
+
+```
+mac (edits) ──fswatch──▶ tools/cowork-push.sh ──rsync --delete (tailnet SSH)──▶ homelab:/srv/ufrj
+                                   └──▶ POST /connectors/cowork/sync   (instant re-scan)
+```
+
+Run `COWORK_REMOTE=lkz@<laptop>:/srv/ufrj EDU_URL=https://<laptop>.<tailnet>.ts.net:8443/api ./tools/cowork-push.sh` on the Mac (launchd/login item); more editing machines just run the same hook. If a push is missed, the hourly cowork slot and the page-open refresh re-scan whatever the replica holds — staleness degrades soft, per rule 4. On the homelab set `COWORK_DIR=/srv/ufrj` in `.env`.
