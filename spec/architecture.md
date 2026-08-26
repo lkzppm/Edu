@@ -6,6 +6,7 @@
 Google OAuth ─────▶ classroom connector ──▶ Google Classroom API (read-only)
 Moodle token ─────▶ moodle connector ─────▶ moodle.cos.ufrj.br  (WS REST)
 Moodle token ─────▶ moodle connector ─────▶ moodle.poli.ufrj.br (Polimoodle)
+page URL ─────────▶ compasso connector ───▶ compasso.ufrj.br page + public Google Sheet CSV
                           │
                           ▼
              ┌─────────────────────────┐

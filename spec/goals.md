@@ -2,13 +2,14 @@
 
 ## What Edu is
 
-A single dashboard for Lucas's college coursework. Three platforms feed it:
+A single dashboard for Lucas's college coursework. Four platforms feed it:
 
 | Platform | How | What it provides |
 |---|---|---|
 | **Google Classroom** | official REST API, OAuth (read-only scopes) | courses, coursework with due dates, submission state, grades |
 | **Moodle UFRJ** | Moodle Web Services REST (`https://moodle.cos.ufrj.br/`) | courses, assignments, quizzes, calendar events (test dates), completion |
 | **Polimoodle** | same Moodle connector (`https://moodle.poli.ufrj.br/` — see [connectors.md](connectors.md) on the hostname) | same |
+| **Compasso** (2026-08-26) | public course page + its embedded public Google Sheet, no login (`https://www.compasso.ufrj.br/disciplinas/…`) | semester schedule → test dates, deliverables, practice work |
 
 Everything lands in one unified to-do list: what's due, when, for which class, and whether it's already handled. Test/exam dates surface separately with a countdown.
 
@@ -20,7 +21,7 @@ Everything lands in one unified to-do list: what's due, when, for which class, a
 
 ## Success criteria (v1)
 
-1. Open `localhost:3001` and see, within one screen: everything due this week, anything overdue, and the next test date — across all three platforms.
+1. Open `localhost:3001` and see, within one screen: everything due this week, anything overdue, and the next test date — across all platforms.
 2. Adding a platform is a connector flow in the UI (like Fin): pick a type, paste credentials / OAuth, done. Demo mode works with zero credentials.
 3. A platform being down or a token expiring never blanks the dashboard — last-good data with a visible stale/error state.
 4. Checking a task off locally sticks, even after the next sync.

@@ -4,7 +4,7 @@ Three tables, strictly layered: **Account** (a connector instance) → **Course*
 
 ## Account
 
-One row per connected platform instance (`connector`: `moodle` | `classroom`; several Moodle sites are several rows). Carries `display_name` (auto-uniquified "Moodle UFRJ (2)"), `base_url` (Moodle), `config` JSON (token / refresh_token — never logged), and sync health: `sync_status` (`never|syncing|ok|error`), `last_sync_at`, `last_error`.
+One row per connected platform instance (`connector`: `moodle` | `classroom` | `compasso`; several Moodle sites are several rows). Carries `display_name` (auto-uniquified "Moodle UFRJ (2)"), `base_url` (Moodle), `config` JSON (token / refresh_token — never logged), and sync health: `sync_status` (`never|syncing|ok|error`), `last_sync_at`, `last_error`.
 
 ## Course
 

@@ -11,6 +11,11 @@ class MoodleConnectRequest(BaseModel):
     password: str | None = None
 
 
+class CompassoConnectRequest(BaseModel):
+    page_url: str = Field(min_length=12)
+    display_name: str | None = None
+
+
 class ConnectorStatus(BaseModel):
     id: int
     name: str
