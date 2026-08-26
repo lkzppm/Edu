@@ -7,15 +7,21 @@ from sqlalchemy.orm import Session
 
 from edu.config import get_settings
 from edu.connectors import classroom as classroom_connector
+from edu.connectors import compasso as compasso_connector
 from edu.connectors import moodle as moodle_connector
 from edu.connectors.base import ConnectorError, run_sync, run_sync_account
 from edu.db import get_db
 from edu.models import Account, Course, Task
-from edu.schemas import ConnectorsResponse, ConnectorStatus, MoodleConnectRequest
+from edu.schemas import (
+    CompassoConnectRequest,
+    ConnectorsResponse,
+    ConnectorStatus,
+    MoodleConnectRequest,
+)
 
 router = APIRouter()
 
-CONNECTOR_NAMES = ("moodle", "classroom")
+CONNECTOR_NAMES = ("moodle", "classroom", "compasso")
 
 # Page-open refresh only touches accounts older than this — opening the
 # dashboard repeatedly must never hammer the platforms.
@@ -121,6 +127,31 @@ def connect_moodle(
         display_name=(body.display_name or sitename)[:120],
         base_url=base_url,
         config={"base_url": base_url, "token": token},
+    )
+    tasks.add_task(run_sync_account, account.id)
+    return {"status": "syncing", "id": account.id}
+
+
+@router.post("/compasso", status_code=202)
+def connect_compasso(
+    body: CompassoConnectRequest, tasks: BackgroundTasks, session: Session = Depends(get_db)
+):
+    page_url = body.page_url.strip().rstrip("/")
+    if not page_url.startswith(("http://", "https://")):
+        raise HTTPException(status_code=422, detail="Page URL must start with https://")
+    try:
+        # Fail fast on an unreachable page / private or unparseable sheet.
+        info = compasso_connector.probe(page_url)
+    except ConnectorError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    default_name = f"Compasso {info['code']}" if info["code"] else (info["name"] or "Compasso")
+    account = _create_account(
+        session,
+        "compasso",
+        institution="Compasso UFRJ",
+        display_name=(body.display_name or default_name)[:120],
+        base_url=page_url,
+        config={"page_url": page_url},
     )
     tasks.add_task(run_sync_account, account.id)
     return {"status": "syncing", "id": account.id}

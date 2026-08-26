@@ -1,6 +1,6 @@
 # Connectors
 
-Both connectors implement `sync(session, account)` and are registered in `SYNCERS` (`connectors/__init__.py`). They raise `ConnectorError` with a user-facing message (never containing credentials). `config["demo"] = true` routes the sync to `connectors/demo.py`, which seeds realistic courses/tasks with relative due dates.
+Every connector implements `sync(session, account)` and is registered in `SYNCERS` (`connectors/__init__.py`). They raise `ConnectorError` with a user-facing message (never containing credentials). `config["demo"] = true` routes the sync to `connectors/demo.py`, which seeds realistic courses/tasks with relative due dates.
 
 ## moodle
 
@@ -43,3 +43,22 @@ Official REST API, OAuth 2.0 web flow, read-only scopes:
 - `GET /courses/{id}/courseWork/-/studentSubmissions?userId=me` — state `TURNED_IN`/`RETURNED` → done at source; `assignedGrade`/`maxPoints` → grade fields
 
 Access tokens are fetched per sync from the stored refresh token and never persisted.
+
+## compasso (2026-08-26)
+
+Some UFRJ courses live outside Moodle/Classroom, on `compasso.ufrj.br/disciplinas/<code>` — a public page embedding a **public Google Sheet** with the semester schedule. No API, no login: the page is plain HTML and the sheet answers the anonymous CSV export (`docs.google.com/spreadsheets/d/{id}/export?format=csv`; a private sheet 200s into an HTML sign-in page, detected by content-type and rejected with a clear message).
+
+**Connect.** The user pastes the course page URL. `POST /connectors/compasso` runs `probe()` — fetch page, find the sheet link, fetch + parse the CSV — before storing anything (`config = {page_url}`). One page = one course; `external_id = page:<url-slug>` (e.g. `page:eel580`).
+
+**Sync** re-reads the page every time to rediscover the sheet id, so a sheet swapped in for a new semester is picked up without reconnecting.
+
+Parsing (pinned to the real EEL580 sheet in tests):
+
+- Course name/code from the page `<title>` ("Laboratório de … - EEL580") via the shared `COURSE_CODE_RE`.
+- The sheet is a table with a header row containing **Data** (dd/mm), **Atividades** and **Tarefas Extra Classe** — columns located by header text, not position.
+- `dd/mm` carries no year: the page's `YYYY-1|2` semester label (iframe aria-label) supplies it; without one, pick the candidate year closest to today (Brazilian semesters never cross New Year). Due time is **23:59 local** (the sheet has no times), matching Classroom's no-time default.
+- **Atividades** matching the shared `EXAM_RE` → `kind=exam` (`external_id = exam:<date>`) — except grade-handout rows ("Entrega de nota P2…"), excluded by a `nota` guard.
+- **Tarefas Extra Classe** → `kind=assignment` when it says "entrega", else `activity` (`external_id = extra:<date>:<slug>`). Rows mentioning "aula" ("Aula remota devido a…") are notes, not work — skipped.
+- Plain lectures, "Não houve aula", "Autoestudo" produce no tasks — the schedule itself is not a to-do list.
+
+No grades (the sheet has none) and no per-task completion at the source (the sheet's ✓ column tracks lectures given, not the student's work) — done/dismissed is purely local, which rule 6 already guarantees.
