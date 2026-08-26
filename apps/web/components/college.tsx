@@ -441,7 +441,10 @@ export function Timetable({
                       <p className="truncate font-mono text-[11px] font-semibold text-zinc-100">
                         {slot.sc.code}
                       </p>
-                      <p className="truncate font-mono text-[10px] text-zinc-400">
+                      <p className="truncate text-[10px] leading-tight text-zinc-300">
+                        {slot.sc.name}
+                      </p>
+                      <p className="truncate font-mono text-[10px] text-zinc-500">
                         {slot.room} · {slot.start}–{slot.end}
                       </p>
                     </div>
