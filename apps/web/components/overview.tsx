@@ -259,7 +259,7 @@ export function Planner({
 
   return (
     <div className="min-w-0">
-      <div className="mb-3 flex items-center justify-center gap-4">
+      <div className="mb-3 flex items-center justify-between gap-4">
         <div className="flex rounded-lg bg-white/[0.05] p-0.5 font-mono text-[11px]">
           {(["week", "month", "chart"] as const).map((m) => (
             <button
