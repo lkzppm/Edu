@@ -142,3 +142,35 @@ class ManualTaskRequest(BaseModel):
 
 class TaskUpdateRequest(BaseModel):
     status: str  # todo|done|dismissed
+
+
+# ── college ───────────────────────────────────────────────────
+
+
+class ClassLink(BaseModel):
+    label: str = Field(min_length=1, max_length=80)
+    url: str = Field(min_length=1, max_length=500)
+
+
+class ClassSlot(BaseModel):
+    day: str = Field(min_length=3, max_length=3)  # mon…sun
+    start: str = Field(pattern=r"^\d{2}:\d{2}$")
+    end: str = Field(pattern=r"^\d{2}:\d{2}$")
+    room: str | None = None
+
+
+class ClassUpdateRequest(BaseModel):
+    """Edu-local edits layered over the registry mirror. Only the fields sent
+    change; `reset` drops earlier edits so the workspace value shows again."""
+
+    name: str | None = Field(default=None, min_length=1, max_length=200)
+    turma: str | None = Field(default=None, max_length=20)
+    credits: int | None = Field(default=None, ge=0, le=20)
+    professor: str | None = Field(default=None, max_length=200)
+    contact: str | None = Field(default=None, max_length=200)
+    evaluation: str | None = None
+    platform: str | None = Field(default=None, max_length=20)
+    platform_url: str | None = Field(default=None, max_length=300)
+    links: list[ClassLink] | None = None
+    schedule: list[ClassSlot] | None = None
+    reset: list[str] = Field(default_factory=list)

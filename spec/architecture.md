@@ -53,7 +53,7 @@ in the `agent_state` volume so conversations survive rebuilds.
 
 Tools are in-process MCP wrappers over the Edu API — `get_tasks`, `get_grades`,
 `get_college`, `get_courses`, `get_connectors`, `sync_connector`, `create_task`,
-`create_test`, `delete_task` — plus the built-in WebSearch/WebFetch. Everything else (Bash, file tools…) is
+`create_test`, `delete_task`, `update_class` — plus the built-in WebSearch/WebFetch. Everything else (Bash, file tools…) is
 disallowed: the agent sees college data and the web, never the machine, and
 stays read-only against the platforms (rule 6; the only writes are Edu-internal
 — a sync trigger, `create_task`, which POSTs a manual to-do to `/tasks`,
@@ -63,7 +63,10 @@ registry codes in `/college`, and takes `due_at` in local time, and
 to-do), which POSTs the same shape with `kind: exam` and requires both the
 class and the date; the system prompt routes any prova/exam/test mention to it —
 and `delete_task` (same day), which DELETEs a user-added row by id and, on the
-API's 409 for a synced row, falls back to PATCH `dismissed` and says so). The agent talks to the api over the compose network; its port is
+API's 409 for a synced row, falls back to PATCH `dismissed` and says so — and
+`update_class`, which PATCHes `/college/classes/{code}` with Edu-local edits to
+a class's info (professor, contact, evaluation, links, schedule…); the
+workspace and the registry mirror are never written, see spec/data-model.md). The agent talks to the api over the compose network; its port is
 never published — the web app proxies `/api/agent/*` to it.
 
 ## Sync cadence (APScheduler)

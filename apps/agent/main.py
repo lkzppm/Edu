@@ -52,6 +52,16 @@ async def _post_json(path: str, payload: dict) -> dict:
         return body
 
 
+async def _patch_json(path: str, payload: dict) -> dict:
+    async with httpx.AsyncClient(base_url=API_BASE, timeout=30) as client:
+        resp = await client.patch(path, json=payload)
+        body = resp.json()
+        if resp.is_error:
+            detail = body.get("detail") if isinstance(body, dict) else None
+            return {"error": detail or f"api returned {resp.status_code}"}
+        return body
+
+
 def _as_content(data) -> dict:
     return {
         "content": [
@@ -336,6 +346,114 @@ async def delete_task(args):
         return _as_content({"result": "deleted", "id": task_id})
 
 
+CLASS_FIELDS = (
+    "name",
+    "turma",
+    "credits",
+    "professor",
+    "contact",
+    "evaluation",
+    "platform",
+    "platform_url",
+    "links",
+    "schedule",
+)
+
+
+@tool(
+    "update_class",
+    "Edit one class's info in Edu: professor, contact (e-mail/site), evaluation "
+    "(grading method), platform/platform_url, links, schedule, turma, credits or name. "
+    "Edits are Edu-local, layered over the cowork workspace registry (which stays "
+    "untouched) and survive re-syncs. Only the fields you send change. 'links' and "
+    "'schedule' replace the whole list — read the class with get_college first and send "
+    "the full list back with your change. 'reset' drops earlier edits for the listed "
+    "fields so the workspace value shows again. Use when Lucas asks to add, fix or "
+    "change something about a class (a professor's e-mail, the grading rule, a room).",
+    {
+        "type": "object",
+        "properties": {
+            "class": {
+                "type": "string",
+                "description": "Class code or name, e.g. 'EEL580'.",
+            },
+            "professor": {"type": "string"},
+            "contact": {"type": "string", "description": "E-mail or URL."},
+            "evaluation": {
+                "type": "string",
+                "description": "Grading method, one line.",
+            },
+            "platform": {"type": "string"},
+            "platform_url": {"type": "string"},
+            "links": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "label": {"type": "string"},
+                        "url": {"type": "string"},
+                    },
+                    "required": ["label", "url"],
+                },
+            },
+            "schedule": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "day": {
+                            "type": "string",
+                            "description": "mon|tue|wed|thu|fri|sat|sun",
+                        },
+                        "start": {"type": "string", "description": "HH:MM"},
+                        "end": {"type": "string", "description": "HH:MM"},
+                        "room": {"type": "string"},
+                    },
+                    "required": ["day", "start", "end"],
+                },
+            },
+            "turma": {"type": "string"},
+            "credits": {"type": "integer"},
+            "name": {"type": "string"},
+            "reset": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Fields whose Edu edit should be dropped.",
+            },
+        },
+        "required": ["class"],
+    },
+)
+async def update_class(args):
+    wanted = str(args.get("class") or "").strip()
+    if not wanted:
+        return _as_content({"error": "class is required"})
+    college = await _get_json("/college")
+    classes = college.get("classes", [])
+    match = _match_course(
+        [
+            {"id": c["code"], "code": c.get("code"), "name": c.get("name")}
+            for c in classes
+        ],
+        wanted,
+    )
+    if match is None:
+        return _as_content(
+            {
+                "error": f"No class matches {wanted!r} — ask which one.",
+                "classes": [
+                    {"code": c.get("code"), "name": c.get("name")} for c in classes
+                ],
+            }
+        )
+    payload = {k: args[k] for k in CLASS_FIELDS if args.get(k) is not None}
+    if args.get("reset"):
+        payload["reset"] = list(args["reset"])
+    if not payload:
+        return _as_content({"error": "nothing to change — send at least one field"})
+    return _as_content(await _patch_json(f"/college/classes/{match}", payload))
+
+
 EDU_TOOLS = [
     get_tasks,
     get_grades,
@@ -346,6 +464,7 @@ EDU_TOOLS = [
     create_task,
     create_test,
     delete_task,
+    update_class,
 ]
 edu_server = create_sdk_mcp_server(name="edu", version="1.0.0", tools=EDU_TOOLS)
 
@@ -376,6 +495,9 @@ the class and the date; ask for whichever is missing.
 - delete_task removes a to-do or test he no longer wants: get_tasks first to find the id, \
 then delete. His own rows are deleted; platform rows can only be dismissed (hidden) — say \
 which happened. If several tasks could match, list them and ask.
+- update_class edits a class's info (professor, contact, grading, links, schedule…) in Edu. \
+The workspace registry stays as it is; Edu layers the edit on top. Confirm in one line what \
+changed.
 
 Advice rules:
 - Be concrete and anchored in his actual data: which task, which class, how many points, \
@@ -394,7 +516,7 @@ of help, no headers unless the answer genuinely needs structure.
 - Never use emojis or decorative symbols. Plain text, short tables or bullet lists only.
 - You are read-only against the platforms: you cannot submit work or change grades. You \
 can trigger a data re-sync with sync_connector, add local to-dos with create_task and test \
-dates with create_test, remove them with delete_task.
+dates with create_test, remove them with delete_task, edit class info with update_class.
 - If a connector shows an error or stale data, mention it so numbers are read with care."""
 
 CHAT_OPTIONS = {
@@ -410,6 +532,7 @@ CHAT_OPTIONS = {
         "mcp__edu__create_task",
         "mcp__edu__create_test",
         "mcp__edu__delete_task",
+        "mcp__edu__update_class",
         "WebSearch",
         "WebFetch",
     ],

@@ -108,6 +108,8 @@ export type SemClass = {
   platform_url: string | null;
   links: { label: string; url: string }[];
   schedule: ClassSlot[];
+  /** Fields edited in Edu (layered over the workspace registry). */
+  edited: string[];
   course_id: number | null;
   pending: number;
   work_items: CoworkItem[];

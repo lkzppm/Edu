@@ -133,3 +133,41 @@ def test_degree_plan_loads_with_summary():
     assert summary["counts"]["em_curso"] == 6
     assert len(plan["forward"]) == 4
     assert 0 < summary["done_pct"] < 100
+
+
+def test_class_edits_layer_over_the_mirror_and_survive_sync(session):
+    """Local edits (2026-09-14) never touch the mirror row and outlive a
+    re-sync — the same rule as task status."""
+    from fastapi.testclient import TestClient
+    from sqlalchemy import select
+
+    from edu.db import get_db
+    from edu.main import app
+    from edu.models import ClassOverride, SemesterClass
+
+    session.add(SemesterClass(code="EEL580", name="Arquitetura", professor="Diego"))
+    session.commit()
+    app.dependency_overrides[get_db] = lambda: session
+    try:
+        client = TestClient(app)
+        res = client.patch("/college/classes/eel580", json={"contact": "x@poli.ufrj.br"})
+        assert res.status_code == 200
+        assert res.json()["contact"] == "x@poli.ufrj.br"
+        assert res.json()["edited"] == ["contact"]
+        assert res.json()["professor"] == "Diego"  # untouched mirror value shows through
+
+        # A sync rewriting the mirror row leaves the edit in place.
+        sc = session.scalar(select(SemesterClass).where(SemesterClass.code == "EEL580"))
+        sc.contact = None
+        session.commit()
+        got = client.get("/college").json()["classes"][0]
+        assert got["contact"] == "x@poli.ufrj.br"
+
+        # reset drops the edit and the empty override row.
+        res = client.patch("/college/classes/EEL580", json={"reset": ["contact"]})
+        assert res.json()["contact"] is None and res.json()["edited"] == []
+        assert session.get(ClassOverride, "EEL580") is None
+        assert client.patch("/college/classes/EEL580", json={"reset": ["code"]}).status_code == 422
+        assert client.patch("/college/classes/NOPE", json={"contact": "x"}).status_code == 404
+    finally:
+        app.dependency_overrides.clear()

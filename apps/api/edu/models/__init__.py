@@ -150,6 +150,23 @@ class SemesterClass(Base):
     )
 
 
+class ClassOverride(Base):
+    """Edu-local edits to a registry class (professor's e-mail, grading…).
+    The registry itself is a pure mirror the sync replaces, and the workspace
+    is read-only, so edits live here and are layered over it at read time —
+    same rule as task status: never clobbered by a sync (rule 6)."""
+
+    __tablename__ = "class_overrides"
+
+    code: Mapped[str] = mapped_column(String(20), primary_key=True)
+    # Only the edited keys, e.g. {"contact": "x@poli.ufrj.br"} — see
+    # routes/college.py EDITABLE for the allowed set.
+    fields: Mapped[dict] = mapped_column(JSON, default=dict)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
+    )
+
+
 class WorkItem(Base):
     """One delivery folder in the cowork workspace (listas/AAAA-MM-DD_Slug).
     Pure mirror of the filesystem — sync fully replaces rows."""
