@@ -42,6 +42,16 @@ async def _get_json(path: str) -> dict | list:
         return resp.json()
 
 
+async def _post_json(path: str, payload: dict) -> dict:
+    async with httpx.AsyncClient(base_url=API_BASE, timeout=30) as client:
+        resp = await client.post(path, json=payload)
+        body = resp.json()
+        if resp.is_error:
+            detail = body.get("detail") if isinstance(body, dict) else None
+            return {"error": detail or f"api returned {resp.status_code}"}
+        return body
+
+
 def _as_content(data) -> dict:
     return {
         "content": [
@@ -123,6 +133,100 @@ async def sync_connector(args):
         return _as_content(resp.json())
 
 
+def _match_course(courses: list[dict], wanted: str) -> int | None:
+    """Resolve a class the way Lucas names it — 'EEL770', 'redes', part of a
+    course name. Exact code/name wins; visible courses beat hidden ones."""
+    want = wanted.strip().lower()
+    if not want:
+        return None
+    pools = [[c for c in courses if not c.get("hidden")], courses]
+    for pool in pools:
+        for c in pool:
+            if want in ((c.get("code") or "").lower(), (c.get("name") or "").lower()):
+                return c["id"]
+        for c in pool:
+            if (
+                want in (c.get("code") or "").lower()
+                or want in (c.get("name") or "").lower()
+            ):
+                return c["id"]
+    return None
+
+
+@tool(
+    "create_task",
+    "Add a personal to-do to Edu's task list, optionally attached to one class. "
+    "Edu-only: it lives in the dashboard and is never pushed to Moodle, Classroom or "
+    "any platform. Use when Lucas asks to remember, add, note or schedule something. "
+    "due_at is LOCAL time (America/Sao_Paulo) as 'YYYY-MM-DDTHH:MM' — never UTC. "
+    "'course' takes a class code or name (e.g. 'EEL770'); leave it out for a task "
+    "that belongs to no class.",
+    {
+        "type": "object",
+        "properties": {
+            "title": {"type": "string", "description": "What has to be done."},
+            "due_at": {
+                "type": "string",
+                "description": "Local due date/time, ISO 'YYYY-MM-DDTHH:MM'. Omit if none.",
+            },
+            "course": {
+                "type": "string",
+                "description": "Class code or name to attach it to. Omit for a personal task.",
+            },
+            "description": {"type": "string", "description": "Optional extra notes."},
+        },
+        "required": ["title"],
+    },
+)
+async def create_task(args):
+    title = str(args.get("title") or "").strip()
+    if not title:
+        return _as_content({"error": "title is required"})
+
+    course_id = None
+    wanted = str(args.get("course") or "").strip()
+    if wanted:
+        courses = await _get_json("/courses")
+        course_id = _match_course(courses, wanted)
+        if course_id is None:
+            # The registry's canonical codes can differ from the platform's.
+            college = await _get_json("/college")
+            classes = [
+                {
+                    "id": c["course_id"],
+                    "code": c.get("code"),
+                    "name": c.get("name"),
+                    "hidden": False,
+                }
+                for c in college.get("classes", [])
+                if c.get("course_id") is not None
+            ]
+            course_id = _match_course(classes, wanted)
+        if course_id is None:
+            return _as_content(
+                {
+                    "error": f"No class matches {wanted!r} — ask which one, or omit it.",
+                    "classes": [
+                        {"code": c.get("code"), "name": c.get("name")}
+                        for c in courses
+                        if not c.get("hidden")
+                    ],
+                }
+            )
+
+    return _as_content(
+        await _post_json(
+            "/tasks",
+            {
+                "title": title,
+                "description": str(args.get("description") or "").strip(),
+                "due_at": str(args.get("due_at") or "").strip() or None,
+                "course_id": course_id,
+            },
+        )
+    )
+
+
 EDU_TOOLS = [
     get_tasks,
     get_grades,
@@ -130,6 +234,7 @@ EDU_TOOLS = [
     get_courses,
     get_connectors,
     sync_connector,
+    create_task,
 ]
 edu_server = create_sdk_mcp_server(name="edu", version="1.0.0", tools=EDU_TOOLS)
 
@@ -150,6 +255,10 @@ prerequisites, credits, graduation: get_college. Stale/failing sources: get_conn
 before telling him a day or time, and say dates in English ("Mon, Aug 31 at 23:59").
 - Use WebSearch/WebFetch only for genuinely external questions (a concept, a book, a UFRJ \
 rule); his own data always comes from the tools.
+- create_task adds a to-do to Edu (his list only — never the platform). Use it when he asks \
+you to remember/add/note something, attach it to the class he named (code or name), and \
+convert the date he says to LOCAL time 'YYYY-MM-DDTHH:MM'. Confirm in one line what you \
+added (title, class, date). If the class is ambiguous, ask instead of guessing.
 
 Advice rules:
 - Be concrete and anchored in his actual data: which task, which class, how many points, \
@@ -167,7 +276,7 @@ earn its place — never dump everything a tool returned.
 of help, no headers unless the answer genuinely needs structure.
 - Never use emojis or decorative symbols. Plain text, short tables or bullet lists only.
 - You are read-only against the platforms: you cannot submit work or change grades. You \
-can trigger a data re-sync with sync_connector when he asks for fresh data.
+can trigger a data re-sync with sync_connector, and add local to-dos with create_task.
 - If a connector shows an error or stale data, mention it so numbers are read with care."""
 
 CHAT_OPTIONS = {
@@ -180,6 +289,7 @@ CHAT_OPTIONS = {
         "mcp__edu__get_courses",
         "mcp__edu__get_connectors",
         "mcp__edu__sync_connector",
+        "mcp__edu__create_task",
         "WebSearch",
         "WebFetch",
     ],

@@ -15,6 +15,7 @@ import {
   ListIcon,
   PercentIcon,
   PlugIcon,
+  PlusIcon,
   RefreshIcon,
   SearchIcon,
   SendIcon,
@@ -71,6 +72,7 @@ const TOOL_META: Record<
     icon: PlugIcon,
   },
   sync_connector: { label: "triggered a sync", active: "syncing", icon: RefreshIcon },
+  create_task: { label: "added a to-do", active: "adding a to-do", icon: PlusIcon },
   WebSearch: { label: "searched the web", active: "searching the web", icon: SearchIcon },
   WebFetch: { label: "read a web page", active: "reading a web page", icon: GlobeIcon },
 };

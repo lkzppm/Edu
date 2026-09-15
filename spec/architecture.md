@@ -52,11 +52,13 @@ missing token → `POST /chat` answers 409 and the UI shows the one-time setup).
 in the `agent_state` volume so conversations survive rebuilds.
 
 Tools are in-process MCP wrappers over the Edu API — `get_tasks`, `get_grades`,
-`get_college`, `get_courses`, `get_connectors`, `sync_connector` — plus the
-built-in WebSearch/WebFetch. Everything else (Bash, file tools…) is disallowed:
-the agent sees college data and the web, never the machine, and stays read-only
-against the platforms (rule 6; a sync trigger is the only write, and it's
-Edu-internal). The agent talks to the api over the compose network; its port is
+`get_college`, `get_courses`, `get_connectors`, `sync_connector`, `create_task`
+— plus the built-in WebSearch/WebFetch. Everything else (Bash, file tools…) is
+disallowed: the agent sees college data and the web, never the machine, and
+stays read-only against the platforms (rule 6; the only writes are Edu-internal
+— a sync trigger and `create_task`, which POSTs a manual to-do to `/tasks`,
+resolving the class Lucas named against `/courses` and, failing that, the
+registry codes in `/college`, and takes `due_at` in local time). The agent talks to the api over the compose network; its port is
 never published — the web app proxies `/api/agent/*` to it.
 
 ## Sync cadence (APScheduler)

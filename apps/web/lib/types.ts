@@ -11,6 +11,10 @@ export type Conn = {
   courses: number;
   tasks_pending: number;
   demo: boolean;
+  /** Credential dead — the account keeps its data but can't sync until renewed. */
+  needs_auth: boolean;
+  /** Re-authenticable in place: "moodle" (token/password) | "classroom" (OAuth). */
+  reauth: string | null;
 };
 
 export type ConnectorsResponse = {

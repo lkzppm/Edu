@@ -8,7 +8,7 @@ import { CoworkButton } from "@/components/cowork";
 import { upcomingExams } from "@/components/exams";
 import { GradesPanel } from "@/components/grades";
 import { CourseLoad, dayKey, Planner } from "@/components/overview";
-import { QuickAdd, TaskList, TaskView, ViewSwitch } from "@/components/tasks";
+import { AddTaskDialog, TaskList, TaskView, ViewSwitch } from "@/components/tasks";
 import { CalendarIcon, CloseIcon, PlugIcon, PlusIcon } from "@/components/ui";
 import { api } from "@/lib/api";
 import { courseColorMap } from "@/lib/colors";
@@ -162,18 +162,18 @@ export default function Home() {
   return (
     <main className="mx-auto min-h-screen max-w-6xl px-5 pb-28">
       {/* Navbar */}
-      <header className="flex items-center justify-between py-6">
-        <h1 className="flex-1 font-display text-xl font-semibold tracking-tight">
+      <header className="flex items-center gap-4 py-6">
+        <h1 className="font-display text-xl font-semibold tracking-tight">
           Edu<span className="text-accent">.</span>
         </h1>
-        <nav className="flex gap-1 rounded-xl bg-white/[0.04] p-1 font-display text-xs font-medium">
+        <nav className="ml-6 flex gap-0.5 text-xs">
           {(["tasks", "grades", "college"] as const).map((p) => (
             <button
               key={p}
               onClick={() => setPanel(p)}
-              className={`rounded-lg px-4 py-1.5 capitalize transition-colors ${
+              className={`rounded-full px-3 py-1.5 font-mono capitalize transition-colors ${
                 panel === p
-                  ? "bg-accent/15 text-cyan-300"
+                  ? "bg-white/[0.07] text-zinc-100"
                   : "text-zinc-500 hover:text-zinc-200"
               }`}
             >
@@ -181,7 +181,7 @@ export default function Home() {
             </button>
           ))}
         </nav>
-        <div className="flex flex-1 items-center justify-end gap-1">
+        <div className="ml-auto flex items-center gap-1">
         <CoworkButton
           conn={cowork}
           classesCount={college?.classes.length ?? 0}
@@ -326,30 +326,14 @@ export default function Home() {
                 onChange={setView}
               />
               <button
-                onClick={() => setShowAdd(!showAdd)}
-                className={`inline-flex items-center gap-1 font-mono text-[11px] transition-colors ${
-                  showAdd ? "text-accent" : "text-zinc-400 hover:text-zinc-200"
-                }`}
+                onClick={() => setShowAdd(true)}
+                className="inline-flex items-center gap-1 font-mono text-[11px] text-zinc-400 transition-colors hover:text-zinc-200"
               >
-                <PlusIcon
-                  className={`h-3 w-3 transition-transform duration-200 ${
-                    showAdd ? "rotate-45" : ""
-                  }`}
-                />
+                <PlusIcon className="h-3 w-3" />
                 add
               </button>
             </div>
           </div>
-          {showAdd && (
-            <div className="mb-6 animate-msg-in">
-              <QuickAdd
-                onAdded={() => {
-                  setShowAdd(false);
-                  load();
-                }}
-              />
-            </div>
-          )}
           {data ? (
             <TaskList
               // remount on any filter/view change so the list eases in
@@ -402,6 +386,17 @@ export default function Home() {
         </span>
       </button>
 
+      <AddTaskDialog
+        open={showAdd}
+        courses={courses}
+        colors={colors}
+        defaultCourseId={filterCourse}
+        onClose={() => setShowAdd(false)}
+        onAdded={() => {
+          setShowAdd(false);
+          load();
+        }}
+      />
       <ConnectorsPanel open={panelOpen} onClose={() => setPanelOpen(false)} onChanged={load} />
       <ChatOverlay open={showChat} onClose={() => setShowChat(false)} />
     </main>

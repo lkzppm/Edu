@@ -17,6 +17,13 @@ class ConnectorError(Exception):
     include tokens, passwords or OAuth codes in it."""
 
 
+class AuthError(ConnectorError):
+    """The stored credential is gone — revoked, expired or rejected. Retrying
+    can't fix it, so the account is parked in `sync_status="auth"` (keeping its
+    courses, tasks and local done/dismissed state) until it is re-authenticated
+    in place via POST /connectors/accounts/{id}/reauth."""
+
+
 def upsert_course(
     session: Session,
     account: Account,
@@ -134,7 +141,7 @@ def run_sync_account(account_id: int) -> None:
             logger.warning("sync failed for %s #%s: %s", connector, account_id, exc)
             account = session.get(Account, account_id)
             if account is not None:
-                account.sync_status = "error"
+                account.sync_status = "auth" if isinstance(exc, AuthError) else "error"
                 account.last_error = str(exc)[:500]
                 session.commit()
 
@@ -142,6 +149,13 @@ def run_sync_account(account_id: int) -> None:
 def run_sync(connector: str) -> None:
     """Sync every account of a connector type (scheduler entrypoint)."""
     with SessionLocal() as session:
-        ids = list(session.scalars(select(Account.id).where(Account.connector == connector)))
+        ids = list(
+            session.scalars(
+                select(Account.id).where(
+                    Account.connector == connector,
+                    Account.sync_status != "auth",  # parked: waiting on a new credential
+                )
+            )
+        )
     for account_id in ids:
         run_sync_account(account_id)

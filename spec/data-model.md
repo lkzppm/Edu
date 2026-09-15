@@ -4,7 +4,9 @@ Three tables, strictly layered: **Account** (a connector instance) → **Course*
 
 ## Account
 
-One row per connected platform instance (`connector`: `moodle` | `classroom` | `compasso`; several Moodle sites are several rows). Carries `display_name` (auto-uniquified "Moodle UFRJ (2)"), `base_url` (Moodle), `config` JSON (token / refresh_token — never logged), and sync health: `sync_status` (`never|syncing|ok|error`), `last_sync_at`, `last_error`.
+One row per connected platform instance (`connector`: `moodle` | `classroom` | `compasso`; several Moodle sites are several rows). Carries `display_name` (auto-uniquified "Moodle UFRJ (2)"), `base_url` (Moodle), `config` JSON (token / refresh_token — never logged), and sync health: `sync_status` (`never|syncing|ok|error|auth`), `last_sync_at`, `last_error`.
+
+`auth` is the parked state: the stored credential is dead (`AuthError`), so syncing can't recover and the page-open sweep, the catch-up job and the interval sync all skip the account (retrying a dead credential only hammers the platform; the manual sync button still forces one). Its courses, tasks and local done/dismissed state stay exactly as they were — `POST /connectors/accounts/{id}/reauth` swaps in a new credential on the same row, which is the whole point: disconnecting would cascade-delete the courses and hand every task a new id.
 
 ## Course
 

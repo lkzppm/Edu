@@ -11,6 +11,15 @@ class MoodleConnectRequest(BaseModel):
     password: str | None = None
 
 
+class MoodleReauthRequest(BaseModel):
+    """New credential for an account that already exists — no base_url, it is
+    the stored one (re-auth never re-points an account at a different site)."""
+
+    token: str | None = None
+    username: str | None = None
+    password: str | None = None
+
+
 class CompassoConnectRequest(BaseModel):
     page_url: str = Field(min_length=12)
     display_name: str | None = None
@@ -23,12 +32,16 @@ class ConnectorStatus(BaseModel):
     institution: str | None
     display_name: str | None
     base_url: str | None
-    sync_status: str
+    sync_status: str  # never|syncing|ok|error|auth
     last_sync_at: str | None
     last_error: str | None
     courses: int
     tasks_pending: int
     demo: bool
+    # Credential dead (sync_status == "auth"): the account needs a new one.
+    needs_auth: bool
+    # This account type can be re-authenticated in place (moodle, classroom).
+    reauth: str | None  # "moodle" | "classroom" | None
 
 
 class ConnectorsResponse(BaseModel):

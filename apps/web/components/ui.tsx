@@ -75,6 +75,7 @@ const STATUS: Record<string, { dot: string; text: string; label: string }> = {
   syncing: { dot: "bg-accent animate-pulse", text: "text-cyan-300", label: "syncing…" },
   error: { dot: "bg-red-500", text: "text-red-400", label: "error" },
   never: { dot: "bg-zinc-600", text: "text-zinc-500", label: "not connected" },
+  auth: { dot: "bg-amber-400", text: "text-amber-400", label: "sign in again" },
   stale: { dot: "bg-amber-400", text: "text-amber-400", label: "stale" },
 };
 
@@ -205,6 +206,15 @@ export const LinkOutIcon = ({ className }: { className?: string }) => (
     <path d="M15 3h6v6" />
     <path d="M10 14 21 3" />
     <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+  </Icon>
+);
+
+export const KeyIcon = ({ className }: { className?: string }) => (
+  <Icon className={className}>
+    <circle cx="7.5" cy="15.5" r="3.5" />
+    <path d="M10 13 20.5 2.5" />
+    <path d="M18 5l2.5 2.5" />
+    <path d="M15 8l2.5 2.5" />
   </Icon>
 );
 

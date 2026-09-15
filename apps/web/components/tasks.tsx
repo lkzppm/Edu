@@ -1,10 +1,10 @@
 "use client";
 
-import { FormEvent, useState } from "react";
-import { Button, CheckIcon, LinkOutIcon, LineInput } from "@/components/ui";
+import { FormEvent, useEffect, useState } from "react";
+import { Button, CheckIcon, CloseIcon, LinkOutIcon, LineInput } from "@/components/ui";
 import { api } from "@/lib/api";
 import { dueGroup, fmtDay, fmtDue, fmtRelative, GROUP_LABELS, GROUP_ORDER } from "@/lib/format";
-import { Task } from "@/lib/types";
+import { Course, Task } from "@/lib/types";
 
 const KIND_LABELS: Record<string, string> = {
   assignment: "assignment",
@@ -114,48 +114,195 @@ function TaskRow({
   );
 }
 
-export function QuickAdd({ onAdded }: { onAdded: () => void }) {
+function FieldLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="mb-2 font-display text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
+      {children}
+    </p>
+  );
+}
+
+/** Manual to-do form as a centered popup — title, the class it belongs to,
+ * due date and optional notes. Esc or a backdrop click closes it. */
+export function AddTaskDialog({
+  open,
+  courses,
+  colors,
+  defaultCourseId,
+  onClose,
+  onAdded,
+}: {
+  open: boolean;
+  courses: Course[];
+  colors: Map<number, string>;
+  defaultCourseId: number | null;
+  onClose: () => void;
+  onAdded: () => void;
+}) {
   const [title, setTitle] = useState("");
   const [due, setDue] = useState("");
+  const [courseId, setCourseId] = useState<number | null>(null);
+  const [notes, setNotes] = useState("");
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Fresh form on every open; the active course filter is the natural default.
+  useEffect(() => {
+    if (!open) return;
+    setTitle("");
+    setDue("");
+    setNotes("");
+    setError(null);
+    setCourseId(defaultCourseId);
+  }, [open, defaultCourseId]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
+
+  if (!open) return null;
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!title.trim()) return;
+    if (!title.trim() || busy) return;
     setBusy(true);
+    setError(null);
     try {
       await api("/tasks", {
         method: "POST",
-        body: JSON.stringify({ title: title.trim(), due_at: due || null }),
+        body: JSON.stringify({
+          title: title.trim(),
+          description: notes.trim(),
+          due_at: due || null,
+          course_id: courseId,
+        }),
       });
-      setTitle("");
-      setDue("");
       onAdded();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "could not add the task");
     } finally {
       setBusy(false);
     }
   };
 
   return (
-    <form onSubmit={submit} className="flex items-end gap-3">
-      <div className="flex-1">
-        <LineInput
-          placeholder="Add a personal to-do…"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-        />
-      </div>
-      <input
-        type="datetime-local"
-        value={due}
-        onChange={(e) => setDue(e.target.value)}
-        aria-label="due date"
-        className="border-b border-white/10 bg-transparent py-2 font-mono text-xs text-zinc-400 outline-none transition-colors [color-scheme:dark] focus:border-accent"
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-4 sm:items-center">
+      <div
+        onClick={onClose}
+        className="animate-fade-in fixed inset-0 bg-[#030b0e]/70 backdrop-blur-sm"
       />
-      <Button type="submit" disabled={busy || !title.trim()}>
-        Add
-      </Button>
-    </form>
+      <form
+        onSubmit={submit}
+        role="dialog"
+        aria-modal="true"
+        aria-label="New task"
+        className="animate-msg-in relative my-auto w-full max-w-md rounded-2xl border border-white/[0.08] bg-[#08161b]/95 p-6 shadow-2xl backdrop-blur-xl"
+      >
+        <div className="mb-6 flex items-start justify-between">
+          <h2 className="font-display text-sm font-semibold tracking-wide text-zinc-100">
+            New task
+          </h2>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="-mr-1.5 -mt-1.5 rounded-lg p-1.5 text-zinc-500 transition-colors hover:bg-white/5 hover:text-zinc-100"
+          >
+            <CloseIcon className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="space-y-6">
+          <div>
+            <FieldLabel>What</FieldLabel>
+            <LineInput
+              autoFocus
+              placeholder="Read chapter 4…"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+            />
+          </div>
+
+          <div>
+            <FieldLabel>Class</FieldLabel>
+            <div className="flex flex-wrap gap-1.5">
+              <button
+                type="button"
+                onClick={() => setCourseId(null)}
+                className={`rounded-full px-2.5 py-1 font-mono text-[11px] transition-colors ${
+                  courseId == null
+                    ? "bg-white/[0.09] text-zinc-100"
+                    : "text-zinc-500 hover:bg-white/[0.04] hover:text-zinc-300"
+                }`}
+              >
+                personal
+              </button>
+              {courses.map((c) => {
+                const color = colors.get(c.id) ?? "#71717a";
+                const on = courseId === c.id;
+                return (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => setCourseId(c.id)}
+                    title={c.name}
+                    className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-mono text-[11px] transition-colors"
+                    style={{
+                      backgroundColor: on ? `${color}26` : "transparent",
+                      color: on ? color : "#a1a1aa",
+                    }}
+                  >
+                    <span
+                      className="inline-block h-2 w-2 rounded-full"
+                      style={{ backgroundColor: color, opacity: on ? 1 : 0.5 }}
+                    />
+                    {c.code ?? c.name}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div>
+            <FieldLabel>Due</FieldLabel>
+            <input
+              type="datetime-local"
+              value={due}
+              onChange={(e) => setDue(e.target.value)}
+              aria-label="due date"
+              className="w-full border-b border-white/10 bg-transparent py-2 font-mono text-xs text-zinc-300 outline-none transition-colors [color-scheme:dark] focus:border-accent"
+            />
+          </div>
+
+          <div>
+            <FieldLabel>Notes</FieldLabel>
+            <textarea
+              rows={2}
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Optional"
+              className="w-full resize-none border-b border-white/10 bg-transparent py-2 text-sm text-zinc-100 placeholder-zinc-600 outline-none transition-colors focus:border-accent"
+            />
+          </div>
+        </div>
+
+        {error && <p className="mt-5 text-sm text-red-400">{error}</p>}
+
+        <div className="mt-7 flex items-center justify-end gap-2">
+          <Button type="button" variant="ghost" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button type="submit" disabled={busy || !title.trim()}>
+            {busy ? "Adding…" : "Add task"}
+          </Button>
+        </div>
+      </form>
+    </div>
   );
 }
 
@@ -216,7 +363,7 @@ export function TaskList({
   if (!tasks.length)
     return (
       <p className="py-6 text-sm text-zinc-500">
-        Nothing here yet — connect a platform or add a to-do above.
+        Nothing here yet — connect a platform or add a to-do with + add.
       </p>
     );
 

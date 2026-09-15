@@ -10,6 +10,7 @@ import {
   EyeIcon,
   EyeOffIcon,
   GlobeIcon,
+  KeyIcon,
   LineInput,
   PlusIcon,
   RefreshIcon,
@@ -89,6 +90,7 @@ function IconBtn({
   icon: Ico,
   danger = false,
   spin = false,
+  className = "",
   ...props
 }: React.ButtonHTMLAttributes<HTMLButtonElement> & {
   label: string;
@@ -101,7 +103,7 @@ function IconBtn({
       type="button"
       className={`group relative grid h-7 w-7 place-items-center rounded-md text-zinc-500 transition-colors hover:bg-white/[0.04] disabled:cursor-not-allowed disabled:text-zinc-700 ${
         danger ? "hover:text-red-400" : "hover:text-cyan-300"
-      }`}
+      } ${className}`}
       aria-label={label}
       {...props}
     >
@@ -113,16 +115,120 @@ function IconBtn({
   );
 }
 
+/** Password box with a reveal toggle — shared by the connect and re-auth forms. */
+function PasswordField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [show, setShow] = useState(false);
+  return (
+    <div className="relative">
+      <LineInput
+        type={show ? "text" : "password"}
+        placeholder="Password (exchanged for a token, never stored)"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="pr-9"
+      />
+      <button
+        type="button"
+        onClick={() => setShow(!show)}
+        aria-label={show ? "hide password" : "show password"}
+        className="absolute right-0 top-1/2 -translate-y-1/2 p-1.5 text-zinc-500 transition-colors hover:text-zinc-200"
+      >
+        {show ? <EyeOffIcon className="h-4 w-4" /> : <EyeIcon className="h-4 w-4" />}
+      </button>
+    </div>
+  );
+}
+
+/** Replace a Moodle account's credential without disconnecting it — the account
+ *  row survives, so its courses and local done/dismissed task state do too. */
+function ReauthForm({ conn, onDone }: { conn: Conn; onDone: () => void }) {
+  const [mode, setMode] = useState<"token" | "password">("token");
+  const [token, setToken] = useState("");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  const ready = mode === "token" ? token.length > 8 : username.length > 0 && password.length > 0;
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    setError("");
+    try {
+      await api(`/connectors/accounts/${conn.id}/reauth`, {
+        method: "POST",
+        body: JSON.stringify(mode === "token" ? { token } : { username, password }),
+      });
+      onDone();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "failed");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <form className="mt-4 flex flex-col gap-3 border-l border-white/10 pl-4" onSubmit={submit}>
+      <p className="text-xs text-zinc-500">
+        New credential for <span className="text-zinc-400">{conn.display_name}</span> — courses and
+        task history stay put.
+      </p>
+      <div className="flex gap-4 font-mono text-[11px]">
+        {(["token", "password"] as const).map((m) => (
+          <button
+            key={m}
+            type="button"
+            onClick={() => setMode(m)}
+            className={`uppercase tracking-wider transition-colors ${
+              mode === m ? "text-accent" : "text-zinc-600 hover:text-zinc-400"
+            }`}
+          >
+            {m === "token" ? "token" : "user + pass"}
+          </button>
+        ))}
+      </div>
+      {mode === "token" ? (
+        <LineInput
+          type="password"
+          placeholder="Web-service token (Preferences → Security keys)"
+          value={token}
+          onChange={(e) => setToken(e.target.value)}
+        />
+      ) : (
+        <>
+          <LineInput
+            placeholder="Moodle username"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+          />
+          <PasswordField value={password} onChange={setPassword} />
+        </>
+      )}
+      {error && <p className="text-sm text-red-400">{error}</p>}
+      <div>
+        <Button type="submit" disabled={busy || !ready}>
+          Sign in again
+        </Button>
+      </div>
+    </form>
+  );
+}
+
 /** One connected account instance. */
 function AccountCard({
   conn,
   onSync,
   onDisconnect,
+  onReauth,
+  reauthForm,
   busy,
 }: {
   conn: Conn;
   onSync: () => void;
   onDisconnect: () => void;
+  onReauth: () => void;
+  reauthForm: ReactNode;
   busy: boolean;
 }) {
   const Ico =
@@ -152,7 +258,16 @@ function AccountCard({
         {conn.base_url && (
           <p className="mt-1 truncate font-mono text-[11px] text-zinc-600">{conn.base_url}</p>
         )}
-        {conn.last_error && <p className="mt-2 text-sm text-red-400">{conn.last_error}</p>}
+        {conn.last_error && (
+          <p className={`mt-2 text-sm ${conn.needs_auth ? "text-amber-400" : "text-red-400"}`}>
+            {conn.last_error}
+          </p>
+        )}
+        {conn.needs_auth && (
+          <p className="mt-1 text-xs text-zinc-500">
+            Courses and task history are kept — sign in again to resume syncing.
+          </p>
+        )}
         <div className="mt-4 flex items-center justify-between">
           <span className="font-mono text-[11px] text-zinc-600">
             synced {timeAgo(conn.last_sync_at)}
@@ -165,6 +280,15 @@ function AccountCard({
               onClick={onSync}
               disabled={busy || conn.sync_status === "syncing"}
             />
+            {conn.reauth && (
+              <IconBtn
+                label="sign in again"
+                icon={KeyIcon}
+                onClick={onReauth}
+                disabled={busy}
+                className={conn.needs_auth ? "text-amber-400" : undefined}
+              />
+            )}
             <IconBtn
               label="disconnect"
               icon={TrashIcon}
@@ -175,6 +299,7 @@ function AccountCard({
           </div>
         </div>
       </div>
+      {reauthForm}
     </section>
   );
 }
@@ -196,8 +321,8 @@ export function ConnectorsPanel({
   const [token, setToken] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
+  const [reauthing, setReauthing] = useState<number | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const load = useCallback(async () => {
@@ -262,6 +387,20 @@ export function ConnectorsPanel({
 
   const syncNow = (conn: Conn) =>
     action(`acc-${conn.id}`, () => api(`/connectors/accounts/${conn.id}/sync`, { method: "POST" }));
+
+  /** Classroom renews through Google; Moodle opens an inline credential form. */
+  const reauth = (conn: Conn) => {
+    if (conn.reauth === "classroom") {
+      action(`acc-${conn.id}`, async () => {
+        const { url } = await api<{ url: string }>(
+          `/connectors/classroom/auth-url?account_id=${conn.id}`
+        );
+        window.location.href = url;
+      });
+      return;
+    }
+    setReauthing((id) => (id === conn.id ? null : conn.id));
+  };
 
   const demo = (type: TypeKey) =>
     action(type, () => api(`/connectors/${TYPES[type].api}/demo`, { method: "POST" }), true);
@@ -343,23 +482,7 @@ export function ConnectorsPanel({
               value={username}
               onChange={(e) => setUsername(e.target.value)}
             />
-            <div className="relative">
-              <LineInput
-                type={showPassword ? "text" : "password"}
-                placeholder="Password (exchanged for a token, never stored)"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="pr-9"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                aria-label={showPassword ? "hide password" : "show password"}
-                className="absolute right-0 top-1/2 -translate-y-1/2 p-1.5 text-zinc-500 transition-colors hover:text-zinc-200"
-              >
-                {showPassword ? <EyeOffIcon className="h-4 w-4" /> : <EyeIcon className="h-4 w-4" />}
-              </button>
-            </div>
+            <PasswordField value={password} onChange={setPassword} />
           </>
         )}
         <div className="flex items-center gap-4">
@@ -531,6 +654,19 @@ export function ConnectorsPanel({
               conn={conn}
               onSync={() => syncNow(conn)}
               onDisconnect={() => disconnect(conn)}
+              onReauth={() => reauth(conn)}
+              reauthForm={
+                reauthing === conn.id && conn.reauth === "moodle" ? (
+                  <ReauthForm
+                    conn={conn}
+                    onDone={() => {
+                      setReauthing(null);
+                      load();
+                      onChanged();
+                    }}
+                  />
+                ) : null
+              }
               busy={busy === `acc-${conn.id}`}
             />
           ))}

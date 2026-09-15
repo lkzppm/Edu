@@ -28,7 +28,9 @@ def job_catchup() -> None:
             stale = [
                 (acc.id, acc.connector)
                 for acc in session.scalars(select(Account))
-                if acc.sync_status != "syncing"
+                # "auth" is parked: retrying a dead credential just hammers the
+                # platform. It waits for a re-auth (or the manual sync button).
+                if acc.sync_status not in ("syncing", "auth")
                 and (
                     acc.last_sync_at is None
                     or now - acc.last_sync_at > timedelta(hours=STALE_AFTER_HOURS)
