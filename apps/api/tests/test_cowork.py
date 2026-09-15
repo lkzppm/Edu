@@ -5,7 +5,6 @@ import pytest
 from edu.connectors import cowork
 from edu.connectors.base import ConnectorError
 from edu.models import Account, Course, SemesterClass, WorkItem
-from edu.routes.college import load_plan
 
 CONTEXT = """---
 code: EEL770
@@ -124,15 +123,6 @@ def test_sync_replaces_registry_and_links_courses(session, workspace, monkeypatc
     assert session.query(WorkItem).count() == 1
     linked = {c.external_id: c.class_code for c in session.query(Course)}
     assert linked == {"1": "EEL770", "2": "EEL770", "3": None}
-
-
-def test_degree_plan_loads_with_summary():
-    plan = load_plan()
-    summary = plan["summary"]
-    assert summary["counts"]["dispensada"] == 23
-    assert summary["counts"]["em_curso"] == 6
-    assert len(plan["forward"]) == 4
-    assert 0 < summary["done_pct"] < 100
 
 
 def test_class_edits_layer_over_the_mirror_and_survive_sync(session):

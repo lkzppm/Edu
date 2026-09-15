@@ -19,3 +19,4 @@ out/
 
 # python build artifacts
 *.egg-info/
+apps/web/tsconfig.tsbuildinfo

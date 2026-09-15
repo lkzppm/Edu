@@ -3,7 +3,8 @@
 @tailwind utilities;
 
 body {
-  @apply bg-[#040e12] text-zinc-100 antialiased;
+  /* overflow-x: the closed slide-over sits translated off the right edge */
+  @apply overflow-x-hidden bg-[#040e12] text-zinc-100 antialiased;
 }
 
 /* Aurora — soft teal-cyan glows anchoring the brand theme */

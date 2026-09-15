@@ -77,6 +77,10 @@ const TOOL_META: Record<
   create_test: { label: "added a test", active: "adding a test", icon: CalendarIcon },
   delete_task: { label: "removed a task", active: "removing a task", icon: TrashIcon },
   update_class: { label: "edited a class", active: "editing a class", icon: CapIcon },
+  update_plan_course: { label: "edited the plan", active: "editing the plan", icon: CapIcon },
+  delete_plan_course: { label: "edited the plan", active: "editing the plan", icon: TrashIcon },
+  update_plan_requirement: { label: "edited the plan", active: "editing the plan", icon: CapIcon },
+  update_plan_meta: { label: "edited the plan", active: "editing the plan", icon: CapIcon },
   WebSearch: { label: "searched the web", active: "searching the web", icon: SearchIcon },
   WebFetch: { label: "read a web page", active: "reading a web page", icon: GlobeIcon },
 };

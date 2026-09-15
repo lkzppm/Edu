@@ -107,10 +107,8 @@ export default function Home() {
   // Tests (exams) have their own tab — the Tasks tab is to-dos only.
   const tasks = useMemo(
     () =>
-      allTasks.filter(
-        (t) => !isTest(t) && (filterCourse == null || t.course_id === filterCourse)
-      ),
-    [allTasks, filterCourse]
+      allTasks.filter((t) => !isTest(t) && (filterCourse == null || t.course_id === filterCourse)),
+    [allTasks, filterCourse],
   );
 
   // Day filter (from the week strip) narrows the task list only — the hero,
@@ -120,7 +118,7 @@ export default function Home() {
       filterDay == null
         ? tasks
         : tasks.filter((t) => t.due_at != null && dayKey(t.due_at) === filterDay),
-    [tasks, filterDay]
+    [tasks, filterDay],
   );
 
   const toggle = async (task: Task) => {
@@ -132,7 +130,7 @@ export default function Home() {
             ...prev,
             tasks: prev.tasks.map((t) => (t.id === task.id ? { ...t, status: next } : t)),
           }
-        : prev
+        : prev,
     );
     try {
       await api(`/tasks/${task.id}`, { method: "PATCH", body: JSON.stringify({ status: next }) });
@@ -154,15 +152,16 @@ export default function Home() {
   };
 
   const summary = data?.summary;
-  const upcoming = useMemo(
-    () => (college ? nextClass(college.classes) : null),
-    [college]
-  );
+  const upcoming = useMemo(() => (college ? nextClass(college.classes) : null), [college]);
 
   return (
-    <main className="mx-auto min-h-screen max-w-6xl px-5 pb-28">
+    // Viewport-locked shell (2026-09-14 — Lucas: nothing should scroll the
+    // page): navbar on top, the active tab fills the rest and its long lists
+    // scroll inside their own panes. Below lg the tabs stack and the shell
+    // itself scrolls — no-scroll is not a thing at 390px.
+    <main className="mx-auto flex h-[100dvh] w-full max-w-[1400px] flex-col px-5">
       {/* Navbar */}
-      <header className="flex items-center gap-4 py-6">
+      <header className="flex shrink-0 items-center gap-4 py-3">
         <h1 className="font-display text-xl font-semibold tracking-tight">
           Edu<span className="text-accent">.</span>
         </h1>
@@ -172,9 +171,7 @@ export default function Home() {
               key={p}
               onClick={() => setPanel(p)}
               className={`rounded-full px-3 py-1.5 font-mono capitalize transition-colors ${
-                panel === p
-                  ? "bg-white/[0.07] text-zinc-100"
-                  : "text-zinc-500 hover:text-zinc-200"
+                panel === p ? "bg-white/[0.07] text-zinc-100" : "text-zinc-500 hover:text-zinc-200"
               }`}
             >
               {p}
@@ -182,188 +179,195 @@ export default function Home() {
           ))}
         </nav>
         <div className="ml-auto flex items-center gap-1">
-        <CoworkButton
-          conn={cowork}
-          classesCount={college?.classes.length ?? 0}
-          deliveries={(college?.classes ?? []).reduce((n, c) => n + c.work_items.length, 0)}
-          onChanged={load}
-        />
-        <button
-          onClick={() => setPanelOpen(true)}
-          className="relative rounded-lg p-2 text-zinc-400 transition-colors hover:bg-white/5 hover:text-zinc-100"
-          aria-label="Connectors"
-        >
-          <PlugIcon className="h-5 w-5" />
-          {connCount > 0 && (
-            <span className="absolute -right-0.5 -top-0.5 grid h-4 w-4 place-items-center rounded-full bg-accent font-mono text-[9px] font-semibold text-[#03191e]">
-              {connCount}
-            </span>
-          )}
-        </button>
+          <CoworkButton
+            conn={cowork}
+            classesCount={college?.classes.length ?? 0}
+            deliveries={(college?.classes ?? []).reduce((n, c) => n + c.work_items.length, 0)}
+            onChanged={load}
+          />
+          <button
+            onClick={() => setPanelOpen(true)}
+            className="relative rounded-lg p-2 text-zinc-400 transition-colors hover:bg-white/5 hover:text-zinc-100"
+            aria-label="Connectors"
+          >
+            <PlugIcon className="h-5 w-5" />
+            {connCount > 0 && (
+              <span className="absolute -right-0.5 -top-0.5 grid h-4 w-4 place-items-center rounded-full bg-accent font-mono text-[9px] font-semibold text-[#03191e]">
+                {connCount}
+              </span>
+            )}
+          </button>
         </div>
       </header>
 
       {error && (
-        <p className="mb-6 rounded-xl border border-amber-400/20 bg-amber-400/5 px-4 py-2 text-sm text-amber-400">
+        <p className="mb-3 shrink-0 rounded-xl border border-amber-400/20 bg-amber-400/5 px-4 py-2 text-sm text-amber-400">
           {error} — showing last-loaded data.
         </p>
       )}
 
-      {panel === "tests" && (
-        <div className="animate-msg-in pt-4">
-          <TestsPanel
-            tasks={allTasks}
-            courses={courses}
-            classes={college?.classes ?? []}
-            colors={colors}
-            onChanged={load}
-          />
-        </div>
-      )}
-
-      {panel === "grades" && (
-        <div className="animate-msg-in pt-4">
-          <GradesPanel courses={grades?.courses ?? []} colors={colors} />
-        </div>
-      )}
-
-      {panel === "college" && college && (
-        <div className="animate-msg-in pt-4">
-          <CollegePanel data={college} colors={colors} />
-        </div>
-      )}
-
-      {panel === "tasks" && (
-        <div className="animate-msg-in">
-      {/* Hero: week count · planner */}
-      <section className="flex flex-col gap-10 py-8 lg:flex-row lg:items-center lg:justify-between lg:gap-8">
-        <div className="shrink-0">
-          <SectionTitle>This week</SectionTitle>
-          <p className="mt-2 font-mono text-5xl font-semibold tracking-tight sm:text-6xl">
-            {summary ? summary.due_week : "—"}
-            <span className="ml-2 text-lg font-normal text-zinc-500">due</span>
-          </p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {summary != null && summary.overdue > 0 && (
-              <span className="rounded-full bg-red-500/10 px-2.5 py-1 font-mono text-xs text-red-400">
-                {summary.overdue} overdue
-              </span>
-            )}
-            {summary != null && summary.due_today > 0 && (
-              <span className="rounded-full bg-accent/10 px-2.5 py-1 font-mono text-xs text-cyan-300">
-                {summary.due_today} today
-              </span>
-            )}
-            {summary != null && summary.done_week > 0 && (
-              <span className="rounded-full bg-emerald-400/10 px-2.5 py-1 font-mono text-xs text-emerald-400">
-                {summary.done_week} done · 7d
-              </span>
-            )}
-          </div>
-          {upcoming && (
-            <p className="mt-4 font-mono text-xs text-zinc-500">
-              <span className="text-zinc-600">class </span>
-              {upcoming}
-            </p>
-          )}
-        </div>
-
-        <div className="min-w-0 lg:mx-8 lg:flex-1">
-          <Planner
-            tasks={tasks}
-            courses={courses}
-            colors={colors}
-            selected={filterDay}
-            onSelect={setFilterDay}
-          />
-        </div>
-      </section>
-
-      {/* Tasks + sidebar */}
-      <div className="mt-14 grid gap-14 lg:grid-cols-3 lg:gap-10">
-        <section className="lg:col-span-2">
-          <div className="mb-5 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <SectionTitle>Tasks</SectionTitle>
-              {filterCourse != null && (
-                <button
-                  onClick={() => setFilterCourse(null)}
-                  className="animate-chip-in inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-mono text-[11px] transition-opacity hover:opacity-80"
-                  style={{
-                    backgroundColor: `${colors.get(filterCourse) ?? "#71717a"}22`,
-                    color: colors.get(filterCourse) ?? "#a1a1aa",
-                  }}
-                  title="clear course filter"
-                >
-                  {(() => {
-                    const c = courses.find((x) => x.id === filterCourse);
-                    return c?.code ?? c?.name ?? "course";
-                  })()}
-                  <CloseIcon className="h-3 w-3" />
-                </button>
-              )}
-              {filterDay != null && (
-                <button
-                  onClick={() => setFilterDay(null)}
-                  className="animate-chip-in inline-flex items-center gap-1.5 rounded-full bg-accent/10 px-2.5 py-1 font-mono text-[11px] text-cyan-300 transition-colors hover:bg-accent/20"
-                  title="clear day filter"
-                >
-                  {fmtDay(new Date(filterDay).toISOString())}
-                  <CloseIcon className="h-3 w-3" />
-                </button>
-              )}
-            </div>
-            <div className="flex items-center gap-4">
-              <ViewSwitch
-                view={view}
-                counts={{
-                  pending: listTasks.filter((t) => t.status === "todo").length,
-                  done: listTasks.filter((t) => t.status === "done").length,
-                }}
-                onChange={setView}
-              />
-              <button
-                onClick={() => setShowAdd(true)}
-                className="inline-flex items-center gap-1 font-mono text-[11px] text-zinc-400 transition-colors hover:text-zinc-200"
-              >
-                <PlusIcon className="h-3 w-3" />
-                add
-              </button>
-            </div>
-          </div>
-          {data ? (
-            <TaskList
-              // remount on any filter/view change so the list eases in
-              key={`${view}-${filterDay ?? "all"}-${filterCourse ?? "all"}`}
-              tasks={listTasks}
+      {/* The active tab: fills the viewport on lg (panes scroll), stacks and scrolls below */}
+      <div className="min-h-0 flex-1 lg:overflow-y-auto pb-10 pt-2 lg:overflow-hidden">
+        {panel === "tests" && (
+          <div key="tests" className="animate-msg-in lg:h-full min-h-0">
+            <TestsPanel
+              tasks={allTasks}
+              courses={courses}
+              classes={college?.classes ?? []}
               colors={colors}
-              view={view}
-              onToggle={toggle}
-              onDismiss={dismiss}
+              onChanged={load}
             />
-          ) : (
-            <p className="py-6 text-sm text-zinc-500">Loading…</p>
-          )}
-        </section>
+          </div>
+        )}
 
-        <aside className="space-y-12">
-          {courses.length > 0 && (
-            <section>
-              <div className="mb-5">
-                <SectionTitle>Workload</SectionTitle>
+        {panel === "grades" && (
+          <div key="grades" className="animate-msg-in lg:h-full min-h-0">
+            <GradesPanel courses={grades?.courses ?? []} colors={colors} />
+          </div>
+        )}
+
+        {panel === "college" && college && (
+          <div key="college" className="animate-msg-in lg:h-full min-h-0">
+            <CollegePanel data={college} colors={colors} />
+          </div>
+        )}
+
+        {panel === "tasks" && (
+          <div
+            key="tasks"
+            className="animate-msg-in grid lg:h-full min-h-0 gap-8 lg:grid-cols-3 lg:gap-10"
+          >
+            {/* main: hero line · tasks header · the list (scrolls) */}
+            <section className="flex min-h-0 flex-col lg:col-span-2">
+              <div className="flex shrink-0 flex-wrap items-end justify-between gap-x-8 gap-y-3">
+                <div className="min-w-0">
+                  <SectionTitle>This week</SectionTitle>
+                  <p className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                    <span className="font-mono text-4xl font-semibold tracking-tight">
+                      {summary ? summary.due_week : "—"}
+                      <span className="ml-2 text-base font-normal text-zinc-500">due</span>
+                    </span>
+                    {summary != null && summary.overdue > 0 && (
+                      <span className="rounded-full bg-red-500/10 px-2.5 py-1 font-mono text-xs text-red-400">
+                        {summary.overdue} overdue
+                      </span>
+                    )}
+                    {summary != null && summary.due_today > 0 && (
+                      <span className="rounded-full bg-accent/10 px-2.5 py-1 font-mono text-xs text-cyan-300">
+                        {summary.due_today} today
+                      </span>
+                    )}
+                    {summary != null && summary.done_week > 0 && (
+                      <span className="rounded-full bg-emerald-400/10 px-2.5 py-1 font-mono text-xs text-emerald-400">
+                        {summary.done_week} done · 7d
+                      </span>
+                    )}
+                  </p>
+                </div>
+                {upcoming && (
+                  <p className="font-mono text-xs text-zinc-500">
+                    <span className="text-zinc-600">class </span>
+                    {upcoming}
+                  </p>
+                )}
               </div>
-              <CourseLoad
-                courses={courses}
-                colors={colors}
-                selected={filterCourse}
-                onSelect={setFilterCourse}
-              />
+
+              <div className="mb-3 mt-6 flex shrink-0 items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <SectionTitle>Tasks</SectionTitle>
+                  {filterCourse != null && (
+                    <button
+                      onClick={() => setFilterCourse(null)}
+                      className="animate-chip-in inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-mono text-[11px] transition-opacity hover:opacity-80"
+                      style={{
+                        backgroundColor: `${colors.get(filterCourse) ?? "#71717a"}22`,
+                        color: colors.get(filterCourse) ?? "#a1a1aa",
+                      }}
+                      title="clear course filter"
+                    >
+                      {(() => {
+                        const c = courses.find((x) => x.id === filterCourse);
+                        return c?.code ?? c?.name ?? "course";
+                      })()}
+                      <CloseIcon className="h-3 w-3" />
+                    </button>
+                  )}
+                  {filterDay != null && (
+                    <button
+                      onClick={() => setFilterDay(null)}
+                      className="animate-chip-in inline-flex items-center gap-1.5 rounded-full bg-accent/10 px-2.5 py-1 font-mono text-[11px] text-cyan-300 transition-colors hover:bg-accent/20"
+                      title="clear day filter"
+                    >
+                      {fmtDay(new Date(filterDay).toISOString())}
+                      <CloseIcon className="h-3 w-3" />
+                    </button>
+                  )}
+                </div>
+                <div className="flex items-center gap-4">
+                  <ViewSwitch
+                    view={view}
+                    counts={{
+                      pending: listTasks.filter((t) => t.status === "todo").length,
+                      done: listTasks.filter((t) => t.status === "done").length,
+                    }}
+                    onChange={setView}
+                  />
+                  <button
+                    onClick={() => setShowAdd(true)}
+                    className="inline-flex items-center gap-1 font-mono text-[11px] text-zinc-400 transition-colors hover:text-zinc-200"
+                  >
+                    <PlusIcon className="h-3 w-3" />
+                    add
+                  </button>
+                </div>
+              </div>
+              <div className="min-h-0 flex-1 lg:overflow-y-auto pr-1">
+                {data ? (
+                  <TaskList
+                    // remount on any filter/view change so the list eases in
+                    key={`${view}-${filterDay ?? "all"}-${filterCourse ?? "all"}`}
+                    tasks={listTasks}
+                    colors={colors}
+                    view={view}
+                    onToggle={toggle}
+                    onDismiss={dismiss}
+                  />
+                ) : (
+                  <p className="py-6 text-sm text-zinc-500">Loading…</p>
+                )}
+              </div>
             </section>
-          )}
-        </aside>
+
+            {/* side: planner on top, workload below (scrolls if it must) */}
+            <aside className="flex min-h-0 flex-col gap-8">
+              <section className="shrink-0">
+                <Planner
+                  tasks={tasks}
+                  courses={courses}
+                  colors={colors}
+                  selected={filterDay}
+                  onSelect={setFilterDay}
+                />
+              </section>
+              {courses.length > 0 && (
+                <section className="flex min-h-0 flex-col">
+                  <div className="mb-3 shrink-0">
+                    <SectionTitle>Workload</SectionTitle>
+                  </div>
+                  <div className="min-h-0 flex-1 lg:overflow-y-auto pr-1">
+                    <CourseLoad
+                      courses={courses}
+                      colors={colors}
+                      selected={filterCourse}
+                      onSelect={setFilterCourse}
+                    />
+                  </div>
+                </section>
+              )}
+            </aside>
+          </div>
+        )}
       </div>
-        </div>
-      )}
 
       {/* ── Edu dot — always bottom center ─────────────────── */}
       <button

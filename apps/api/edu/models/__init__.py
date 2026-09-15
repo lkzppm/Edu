@@ -184,3 +184,70 @@ class WorkItem(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )
+
+
+# ── degree plan (2026-09-14: moved from data/degree_plan.yml into the DB so
+# Edu — the UI and the agent — can edit it; the YAML is now an import seed
+# and the export format) ────────────────────────────────────────────────
+
+
+class PlanCourse(Base):
+    """One course of the degree plan. `period` set → part of the curriculum
+    grid (a mandatory); null → an extra (optative, free choice…) that only
+    shows in the semester it is planned for."""
+
+    __tablename__ = "plan_courses"
+
+    code: Mapped[str] = mapped_column(String(20), primary_key=True)
+    name: Mapped[str] = mapped_column(String(200))
+    credits: Mapped[int | None]
+    period: Mapped[int | None]
+    status: Mapped[str] = mapped_column(String(12), default="ahead")  # done|current|ahead
+    planned: Mapped[str | None] = mapped_column(String(10))  # semester, e.g. 2027/1
+    note: Mapped[str | None] = mapped_column(Text)
+    at_risk: Mapped[bool] = mapped_column(Boolean, default=False)
+    requires: Mapped[list] = mapped_column(JSON, default=list)  # prerequisite codes
+    counts_for: Mapped[str | None] = mapped_column(String(40))  # PlanRequirement.key
+    role: Mapped[str | None] = mapped_column(String(20))  # free tag: ancora, optativa…
+    unlocks: Mapped[str | None] = mapped_column(String(20))  # course this one gates
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
+    )
+
+
+class PlanRequirement(Base):
+    """A graduation requirement meter. `computed` → done/in_course are summed
+    from PlanCourse credits with `counts_for == key`; else the stored values."""
+
+    __tablename__ = "plan_requirements"
+
+    key: Mapped[str] = mapped_column(String(40), primary_key=True)
+    label: Mapped[str] = mapped_column(String(80))
+    unit: Mapped[str] = mapped_column(String(8), default="cr")
+    required: Mapped[int | None]
+    done: Mapped[int] = mapped_column(default=0)
+    in_course: Mapped[int] = mapped_column(default=0)
+    computed: Mapped[bool] = mapped_column(Boolean, default=False)
+    position: Mapped[int] = mapped_column(default=0)
+
+
+class PlanSemester(Base):
+    """Per-semester label/note for the road to graduation, plus free-form
+    items (a project defense, ACE hours…) that aren't courses."""
+
+    __tablename__ = "plan_semesters"
+
+    semester: Mapped[str] = mapped_column(String(10), primary_key=True)
+    label: Mapped[str | None] = mapped_column(String(80))
+    note: Mapped[str | None] = mapped_column(Text)
+    items: Mapped[list] = mapped_column(JSON, default=list)  # [{code?, name, role?, note?}]
+
+
+class PlanMeta(Base):
+    """Key/value plan facts: student, program, current_semester,
+    graduation_target, hard_limit, notes…"""
+
+    __tablename__ = "plan_meta"
+
+    key: Mapped[str] = mapped_column(String(40), primary_key=True)
+    value: Mapped[str] = mapped_column(Text)

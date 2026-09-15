@@ -83,10 +83,10 @@ export function CourseTimeline({
 
   return (
     <div className="overflow-x-auto">
-      <div className="min-w-[560px]">
+      <div className="min-w-[360px]">
         {/* Tick-label header, sharing the label-column offset with the body */}
         <div className="flex">
-          <div className="w-28 shrink-0 sm:w-32" />
+          <div className="w-20 shrink-0" />
           <div className="relative h-5 flex-1">
             {ticks
               // keep the gridline but drop a label that would collide with "today"
@@ -112,7 +112,7 @@ export function CourseTimeline({
         </div>
 
         <div className="flex">
-          <div className="w-28 shrink-0 sm:w-32">
+          <div className="w-20 shrink-0">
             {lanes.map((lane) => (
               <div
                 key={lane.id ?? "personal"}

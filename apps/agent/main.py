@@ -52,14 +52,18 @@ async def _post_json(path: str, payload: dict) -> dict:
         return body
 
 
-async def _patch_json(path: str, payload: dict) -> dict:
+async def _send_json(method: str, path: str, payload: dict | None = None) -> dict:
     async with httpx.AsyncClient(base_url=API_BASE, timeout=30) as client:
-        resp = await client.patch(path, json=payload)
+        resp = await client.request(method, path, json=payload)
         body = resp.json()
         if resp.is_error:
             detail = body.get("detail") if isinstance(body, dict) else None
             return {"error": detail or f"api returned {resp.status_code}"}
         return body
+
+
+async def _patch_json(path: str, payload: dict) -> dict:
+    return await _send_json("PATCH", path, payload)
 
 
 def _as_content(data) -> dict:
@@ -98,10 +102,13 @@ async def get_grades(args):
     "get_college",
     "The college picture: this semester's classes from the cowork workspace registry "
     "(code, name, credits, professor + contact, evaluation, schedule with rooms, links, "
-    "workspace deliveries) and the full degree plan (curriculum by period with status "
-    "dispensada/em_curso/a_cursar, prerequisites, credit summary, forward semesters, "
-    "requirement progress). Use for questions about the timetable, professors, the "
-    "fluxogram, prerequisites, credits or graduation planning.",
+    "workspace deliveries; `edited` lists fields changed in Edu) and the degree plan: "
+    "`periods` (curriculum by period, each course with status done/current/ahead, "
+    "credits, planned semester, prerequisites, notes), `road` (semesters to graduation "
+    "derived from each course's planned semester, with credits and free-form items), "
+    "`extras` (optatives outside the curriculum), `requirements` (meters) and `meta` "
+    "(program, current_semester, graduation_target…). Use for questions about the "
+    "timetable, professors, the fluxogram, prerequisites, credits or graduation planning.",
     {},
 )
 async def get_college(args):
@@ -454,6 +461,162 @@ async def update_class(args):
     return _as_content(await _patch_json(f"/college/classes/{match}", payload))
 
 
+PLAN_COURSE_FIELDS = (
+    "name",
+    "credits",
+    "period",
+    "status",
+    "planned",
+    "note",
+    "at_risk",
+    "requires",
+    "counts_for",
+    "role",
+    "unlocks",
+)
+
+
+@tool(
+    "update_plan_course",
+    "Create or edit one course of the degree plan (the College tab's fluxogram and road "
+    "to graduation). Send only what changes. status: done (credited/passed) | current "
+    "(this semester) | ahead (still to take). planned: the semester it's scheduled for, "
+    "'YYYY/S' — the road to graduation is derived from it. period: its curriculum period "
+    "(omit for an optative/extra outside the grid). counts_for: which requirement it "
+    "feeds (e.g. obrigatorias, optativas, humanas, livre). requires: prerequisite codes. "
+    "A NEW course needs a name. 'clear' lists fields to blank (period, planned, note, "
+    "counts_for, role, unlocks, credits). Use when Lucas passes/credits a course, moves "
+    "one to another semester, adds an optative, or fixes a plan detail.",
+    {
+        "type": "object",
+        "properties": {
+            "code": {"type": "string", "description": "Course code, e.g. 'COS360'."},
+            "name": {"type": "string"},
+            "credits": {"type": "integer"},
+            "period": {"type": "integer"},
+            "status": {"type": "string", "enum": ["done", "current", "ahead"]},
+            "planned": {
+                "type": "string",
+                "description": "Semester 'YYYY/S', e.g. '2027/1'.",
+            },
+            "note": {"type": "string"},
+            "at_risk": {"type": "boolean"},
+            "requires": {"type": "array", "items": {"type": "string"}},
+            "counts_for": {"type": "string"},
+            "role": {"type": "string"},
+            "unlocks": {"type": "string"},
+            "clear": {"type": "array", "items": {"type": "string"}},
+        },
+        "required": ["code"],
+    },
+)
+async def update_plan_course(args):
+    code = str(args.get("code") or "").strip().upper()
+    if not code:
+        return _as_content({"error": "code is required"})
+    payload = {k: args[k] for k in PLAN_COURSE_FIELDS if args.get(k) is not None}
+    if args.get("clear"):
+        payload["clear"] = list(args["clear"])
+    if not payload:
+        return _as_content({"error": "nothing to change — send at least one field"})
+    return _as_content(
+        await _send_json("PUT", f"/college/plan/courses/{code}", payload)
+    )
+
+
+@tool(
+    "delete_plan_course",
+    "Remove a course from the degree plan by code (e.g. an optative he dropped). Ask "
+    "first if it's a curriculum mandatory.",
+    {
+        "type": "object",
+        "properties": {"code": {"type": "string"}},
+        "required": ["code"],
+    },
+)
+async def delete_plan_course(args):
+    code = str(args.get("code") or "").strip().upper()
+    if not code:
+        return _as_content({"error": "code is required"})
+    return _as_content(await _send_json("DELETE", f"/college/plan/courses/{code}"))
+
+
+@tool(
+    "update_plan_requirement",
+    "Create or edit a graduation requirement meter (optativas, humanas, livre, ACE "
+    "hours…). Send only what changes: label, unit (cr|h), required, done, in_course, "
+    "computed (true → done/in_course are summed from plan courses whose counts_for is "
+    "this key instead of the stored numbers), position. A new key needs a label.",
+    {
+        "type": "object",
+        "properties": {
+            "key": {
+                "type": "string",
+                "description": "Requirement key, e.g. 'optativas'.",
+            },
+            "label": {"type": "string"},
+            "unit": {"type": "string"},
+            "required": {"type": "integer"},
+            "done": {"type": "integer"},
+            "in_course": {"type": "integer"},
+            "computed": {"type": "boolean"},
+            "position": {"type": "integer"},
+        },
+        "required": ["key"],
+    },
+)
+async def update_plan_requirement(args):
+    key = str(args.get("key") or "").strip()
+    if not key:
+        return _as_content({"error": "key is required"})
+    fields = ("label", "unit", "required", "done", "in_course", "computed", "position")
+    payload = {k: args[k] for k in fields if args.get(k) is not None}
+    if not payload:
+        return _as_content({"error": "nothing to change — send at least one field"})
+    return _as_content(await _patch_json(f"/college/plan/requirements/{key}", payload))
+
+
+@tool(
+    "update_plan_meta",
+    "Set degree-plan facts: program, curriculum (version), current_semester ('YYYY/S' — "
+    "drives which courses count as this semester on the road), graduation_target, "
+    "hard_limit, notes, or a semester's label/note via 'semester' + label/note. Send a "
+    "null value to remove a key.",
+    {
+        "type": "object",
+        "properties": {
+            "meta": {
+                "type": "object",
+                "description": "Key → value (string) pairs to set; null removes.",
+                "additionalProperties": {"type": ["string", "null"]},
+            },
+            "semester": {
+                "type": "string",
+                "description": "'YYYY/S' to label/note a semester.",
+            },
+            "label": {"type": "string"},
+            "note": {"type": "string"},
+        },
+    },
+)
+async def update_plan_meta(args):
+    out = {}
+    meta = args.get("meta")
+    if isinstance(meta, dict) and meta:
+        out["meta"] = await _patch_json("/college/plan/meta", meta)
+    semester = str(args.get("semester") or "").strip()
+    if semester:
+        payload = {k: args[k] for k in ("label", "note") if args.get(k) is not None}
+        out["semester"] = await _patch_json(
+            f"/college/plan/semesters/{semester}", payload
+        )
+    if not out:
+        return _as_content(
+            {"error": "send meta pairs and/or a semester with label/note"}
+        )
+    return _as_content(out)
+
+
 EDU_TOOLS = [
     get_tasks,
     get_grades,
@@ -465,6 +628,10 @@ EDU_TOOLS = [
     create_test,
     delete_task,
     update_class,
+    update_plan_course,
+    delete_plan_course,
+    update_plan_requirement,
+    update_plan_meta,
 ]
 edu_server = create_sdk_mcp_server(name="edu", version="1.0.0", tools=EDU_TOOLS)
 
@@ -498,6 +665,10 @@ which happened. If several tasks could match, list them and ask.
 - update_class edits a class's info (professor, contact, grading, links, schedule…) in Edu. \
 The workspace registry stays as it is; Edu layers the edit on top. Confirm in one line what \
 changed.
+- The degree plan is editable: update_plan_course (status done/current/ahead, planned semester, \
+credits, prerequisites, notes, optatives), delete_plan_course, update_plan_requirement (the \
+meters) and update_plan_meta (program, current_semester, graduation target, semester labels). \
+Read get_college first so you edit the right code; confirm the change in one line.
 
 Advice rules:
 - Be concrete and anchored in his actual data: which task, which class, how many points, \
@@ -516,7 +687,8 @@ of help, no headers unless the answer genuinely needs structure.
 - Never use emojis or decorative symbols. Plain text, short tables or bullet lists only.
 - You are read-only against the platforms: you cannot submit work or change grades. You \
 can trigger a data re-sync with sync_connector, add local to-dos with create_task and test \
-dates with create_test, remove them with delete_task, edit class info with update_class.
+dates with create_test, remove them with delete_task, edit class info with update_class and \
+the degree plan with the update_plan_* tools.
 - If a connector shows an error or stale data, mention it so numbers are read with care."""
 
 CHAT_OPTIONS = {
@@ -533,6 +705,10 @@ CHAT_OPTIONS = {
         "mcp__edu__create_test",
         "mcp__edu__delete_task",
         "mcp__edu__update_class",
+        "mcp__edu__update_plan_course",
+        "mcp__edu__delete_plan_course",
+        "mcp__edu__update_plan_requirement",
+        "mcp__edu__update_plan_meta",
         "WebSearch",
         "WebFetch",
     ],

@@ -1,22 +1,35 @@
-"""The College tab's data: the class registry (from the cowork workspace),
-work items, and the degree plan (data/degree_plan.yml — the editable source
-of truth transcribed from the plano ECI)."""
+"""The College tab's data: the class registry (from the cowork workspace,
+with Edu-local edits layered on), work items, and the degree plan (plan_*
+tables — editable through the routes below and the agent; see edu/plan.py)."""
 
 from datetime import UTC, datetime
-from pathlib import Path
 
-import yaml
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from edu import plan as plan_store
 from edu.db import get_db
-from edu.models import ClassOverride, Course, SemesterClass, Task, WorkItem
-from edu.schemas import ClassUpdateRequest
+from edu.models import (
+    ClassOverride,
+    Course,
+    PlanCourse,
+    PlanMeta,
+    PlanRequirement,
+    PlanSemester,
+    SemesterClass,
+    Task,
+    WorkItem,
+)
+from edu.schemas import (
+    ClassUpdateRequest,
+    PlanCourseIn,
+    PlanImportRequest,
+    PlanRequirementIn,
+    PlanSemesterIn,
+)
 
 router = APIRouter()
-
-PLAN_PATH = Path(__file__).resolve().parent.parent / "data" / "degree_plan.yml"
 
 # Registry fields Edu may edit locally (2026-09-14 — the agent adding a
 # professor's e-mail). Identity (code), plan fields (kind, period, anchor,
@@ -49,29 +62,6 @@ def class_display(session: Session) -> dict[str, str]:
         if code in names and fields.get("name"):
             names[code] = fields["name"]
     return names
-
-
-def load_plan() -> dict:
-    try:
-        plan = yaml.safe_load(PLAN_PATH.read_text(encoding="utf-8")) or {}
-    except (OSError, yaml.YAMLError):
-        return {}
-    credits = {"dispensada": 0, "em_curso": 0, "a_cursar": 0}
-    counts = {"dispensada": 0, "em_curso": 0, "a_cursar": 0}
-    for period in plan.get("curriculum", []):
-        for course in period.get("courses", []):
-            status = course.get("status")
-            if status in credits:
-                credits[status] += course.get("credits") or 0
-                counts[status] += 1
-    total = sum(credits.values())
-    plan["summary"] = {
-        "credits": credits,
-        "counts": counts,
-        "total_credits": total,
-        "done_pct": round(credits["dispensada"] / total * 100, 1) if total else None,
-    }
-    return plan
 
 
 def _work_item(item: WorkItem) -> dict:
@@ -143,7 +133,7 @@ def college(session: Session = Depends(get_db)) -> dict:
             }
             for sc in classes
         ],
-        "plan": load_plan(),
+        "plan": plan_store.build(session),
     }
 
 
@@ -178,3 +168,123 @@ def update_class(code: str, body: ClassUpdateRequest, session: Session = Depends
         override.updated_at = datetime.now(UTC)
     session.commit()
     return _class_out(sc, fields)
+
+
+# ── degree plan edits ─────────────────────────────────────────
+
+
+def _apply(obj, body, clear: list[str] = ()) -> None:
+    for key in clear:
+        setattr(obj, key, None)
+    for key, value in body.model_dump(exclude_unset=True, exclude={"clear"}).items():
+        if value is not None:
+            setattr(obj, key, value)
+
+
+@router.get("/plan")
+def get_plan(session: Session = Depends(get_db)) -> dict:
+    return plan_store.build(session)
+
+
+@router.put("/plan/courses/{code}")
+def put_plan_course(code: str, body: PlanCourseIn, session: Session = Depends(get_db)) -> dict:
+    """Create or edit one plan course (a curriculum mandatory when `period`
+    is set, an extra otherwise)."""
+    code = code.strip().upper()
+    bad = [
+        k
+        for k in body.clear
+        if k not in ("period", "planned", "note", "counts_for", "role", "unlocks", "credits")
+    ]
+    if bad:
+        raise HTTPException(status_code=422, detail=f"Not clearable: {', '.join(bad)}")
+    course = session.get(PlanCourse, code)
+    if course is None:
+        if not body.name:
+            raise HTTPException(status_code=422, detail="name is required for a new course")
+        course = PlanCourse(code=code, name=body.name)
+        session.add(course)
+    _apply(course, body, body.clear)
+    if body.requires is not None:
+        course.requires = [r.strip().upper() for r in body.requires if r.strip()]
+    course.updated_at = datetime.now(UTC)
+    session.commit()
+    return plan_store.course_out(course)
+
+
+@router.delete("/plan/courses/{code}")
+def delete_plan_course(code: str, session: Session = Depends(get_db)) -> dict:
+    course = session.get(PlanCourse, code.strip().upper())
+    if course is None:
+        raise HTTPException(status_code=404, detail="Plan course not found")
+    session.delete(course)
+    session.commit()
+    return {"status": "deleted"}
+
+
+@router.patch("/plan/requirements/{key}")
+def patch_requirement(
+    key: str, body: PlanRequirementIn, session: Session = Depends(get_db)
+) -> dict:
+    req = session.get(PlanRequirement, key)
+    if req is None:
+        if not body.label:
+            raise HTTPException(status_code=422, detail="label is required for a new requirement")
+        req = PlanRequirement(key=key, label=body.label)
+        session.add(req)
+    _apply(req, body)
+    session.commit()
+    courses = session.scalars(select(PlanCourse)).all()
+    return plan_store.requirement_out(req, courses)
+
+
+@router.delete("/plan/requirements/{key}")
+def delete_requirement(key: str, session: Session = Depends(get_db)) -> dict:
+    req = session.get(PlanRequirement, key)
+    if req is None:
+        raise HTTPException(status_code=404, detail="Requirement not found")
+    session.delete(req)
+    session.commit()
+    return {"status": "deleted"}
+
+
+@router.patch("/plan/semesters/{semester}")
+def patch_semester(semester: str, body: PlanSemesterIn, session: Session = Depends(get_db)) -> dict:
+    sem = session.get(PlanSemester, semester) or PlanSemester(semester=semester)
+    session.add(sem)
+    _apply(sem, body)
+    session.commit()
+    return {"semester": sem.semester, "label": sem.label, "note": sem.note, "items": sem.items}
+
+
+@router.patch("/plan/meta")
+def patch_meta(body: dict[str, str | None], session: Session = Depends(get_db)) -> dict:
+    """Set plan facts (program, current_semester, graduation_target…); null
+    removes a key."""
+    for key, value in body.items():
+        key = key.strip()
+        if not key:
+            continue
+        row = session.get(PlanMeta, key)
+        if value is None:
+            if row is not None:
+                session.delete(row)
+        elif row is None:
+            session.add(PlanMeta(key=key, value=str(value)))
+        else:
+            row.value = str(value)
+    session.commit()
+    return {m.key: m.value for m in session.scalars(select(PlanMeta)).all()}
+
+
+@router.post("/plan/import")
+def import_plan(body: PlanImportRequest, session: Session = Depends(get_db)) -> dict:
+    try:
+        return plan_store.import_yaml(session, body.yaml, replace=body.replace)
+    except (ValueError, KeyError, TypeError) as exc:
+        raise HTTPException(status_code=422, detail=f"Bad plan YAML: {exc}") from exc
+
+
+@router.get("/plan/export")
+def export_plan(session: Session = Depends(get_db)) -> Response:
+    return Response(plan_store.export_yaml(session), media_type="text/yaml")

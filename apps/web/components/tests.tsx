@@ -205,8 +205,8 @@ function TestCalendar({
   }).length;
 
   return (
-    <div>
-      <div className="mb-3 flex items-center justify-between">
+    <div className="flex lg:h-full min-h-0 flex-col">
+      <div className="mb-2 flex shrink-0 items-center justify-between">
         <button
           onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))}
           aria-label="previous month"
@@ -238,7 +238,8 @@ function TestCalendar({
       </div>
       <div
         key={`${month.getFullYear()}-${month.getMonth()}`}
-        className="animate-fade-in grid grid-cols-7 gap-1"
+        className="animate-fade-in grid min-h-0 flex-1 grid-cols-7 gap-1"
+        style={{ gridTemplateRows: `auto repeat(${rows}, minmax(0, 1fr))` }}
       >
         {["sun", "mon", "tue", "wed", "thu", "fri", "sat"].map((d) => (
           <span key={d} className="pb-1 text-center font-mono text-[10px] text-zinc-600">
@@ -254,7 +255,7 @@ function TestCalendar({
           return (
             <div
               key={key}
-              className={`flex min-h-[4.5rem] flex-col gap-1 rounded-lg p-1.5 transition-colors sm:min-h-[5.5rem] ${
+              className={`flex min-h-0 flex-col gap-0.5 overflow-hidden rounded-lg p-1.5 transition-colors ${
                 isToday ? "bg-accent/[0.08] ring-1 ring-accent/40" : "bg-white/[0.02]"
               } ${inMonth ? "" : "opacity-30"}`}
             >
@@ -265,7 +266,7 @@ function TestCalendar({
               >
                 {day.getDate()}
               </span>
-              {list.map((t) => {
+              {list.slice(0, 2).map((t) => {
                 const color = (t.course_id != null && colors.get(t.course_id)) || "#71717a";
                 const muted = selected != null && t.course_id !== selected;
                 return (
@@ -285,6 +286,11 @@ function TestCalendar({
                   </span>
                 );
               })}
+              {list.length > 2 && (
+                <span className="font-mono text-[9px] leading-none text-zinc-500">
+                  +{list.length - 2}
+                </span>
+              )}
             </div>
           );
         })}
@@ -445,14 +451,14 @@ export function TestsPanel({
   };
 
   return (
-    <div className="grid gap-12 lg:grid-cols-3 lg:gap-10">
-      <aside>
-        <div className="mb-5">
+    <div className="grid lg:h-full min-h-0 gap-8 lg:grid-cols-3 lg:gap-10">
+      <aside className="flex min-h-0 flex-col">
+        <div className="mb-4 shrink-0">
           <h2 className="font-display text-[11px] font-semibold uppercase tracking-[0.22em] text-zinc-500">
             Classes
           </h2>
         </div>
-        <div>
+        <div className="min-h-0 flex-1 lg:overflow-y-auto pr-1">
           {courses.length ? (
             <ClassNav
               courses={courses}
@@ -469,11 +475,11 @@ export function TestsPanel({
         </div>
       </aside>
 
-      <section className="min-w-0 lg:col-span-2">
+      <section className="flex min-h-0 min-w-0 flex-col lg:col-span-2">
         {/* hero and list keyed by class so they ease in on switch; the calendar keeps its month */}
         <div
           key={`hero-${selected ?? "all"}`}
-          className="animate-msg-in mb-8 flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between"
+          className="animate-msg-in mb-4 flex shrink-0 flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"
         >
           <div className="min-w-0">
             <p className="inline-flex items-center gap-1.5 font-display text-[11px] font-semibold uppercase tracking-[0.22em] text-zinc-500">
@@ -495,10 +501,10 @@ export function TestsPanel({
             </p>
             {next ? (
               <>
-                <p className="mt-2 font-mono text-5xl font-semibold tracking-tight text-zinc-100 sm:text-6xl">
+                <p className="mt-1 font-mono text-4xl font-semibold tracking-tight text-zinc-100">
                   {fmtCountdown(next.due_at!)}
                 </p>
-                <p className="mt-2 flex min-w-0 items-center gap-2 text-sm text-zinc-400">
+                <p className="mt-1 flex min-w-0 items-center gap-2 text-sm text-zinc-400">
                   <Diamond
                     color={(next.course_id != null && colors.get(next.course_id)) || "#71717a"}
                   />
@@ -510,7 +516,7 @@ export function TestsPanel({
                 </p>
               </>
             ) : (
-              <p className="mt-2 font-mono text-5xl font-semibold tracking-tight text-zinc-600 sm:text-6xl">
+              <p className="mt-1 font-mono text-4xl font-semibold tracking-tight text-zinc-600">
                 —
               </p>
             )}
@@ -520,15 +526,22 @@ export function TestsPanel({
           </p>
         </div>
 
-        <TestCalendar tests={allTests} colors={colors} selected={selected} />
+        <div className="min-h-0 flex-[3]">
+          <TestCalendar tests={allTests} colors={colors} selected={selected} />
+        </div>
 
-        <div key={`list-${selected ?? "all"}`} className="animate-msg-in mt-12">
-          <div className="mb-4">
+        <div
+          key={`list-${selected ?? "all"}`}
+          className="animate-msg-in mt-5 flex min-h-0 flex-[2] flex-col"
+        >
+          <div className="mb-2 shrink-0">
             <h2 className="font-display text-[11px] font-semibold uppercase tracking-[0.22em] text-zinc-500">
               Upcoming
             </h2>
           </div>
-          <TestList tests={tests} courses={courses} colors={colors} />
+          <div className="min-h-0 flex-1 lg:overflow-y-auto pr-1">
+            <TestList tests={tests} courses={courses} colors={colors} />
+          </div>
         </div>
       </section>
     </div>

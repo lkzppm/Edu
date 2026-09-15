@@ -114,7 +114,8 @@ function CourseNav({
  * lighter track of the same surface; value labels stay in text tokens. */
 function ItemBar({ item, color }: { item: GradeItem; color: string }) {
   const graded = item.grade != null;
-  const fillPct = graded && num(item.max_grade) > 0 ? (num(item.grade) / num(item.max_grade)) * 100 : 0;
+  const fillPct =
+    graded && num(item.max_grade) > 0 ? (num(item.grade) / num(item.max_grade)) * 100 : 0;
   return (
     <div className="group py-2">
       <div className="mb-1.5 flex items-baseline justify-between gap-3">
@@ -159,7 +160,7 @@ function ItemBar({ item, color }: { item: GradeItem; color: string }) {
       <div className="h-2 overflow-hidden rounded-full bg-white/[0.06]">
         {graded && (
           <div
-            className="h-full rounded-full transition-all duration-500"
+            className="lg:h-full rounded-full transition-all duration-500"
             style={{ width: `${Math.min(fillPct, 100)}%`, backgroundColor: color }}
           />
         )}
@@ -177,9 +178,10 @@ function CourseDetail({ course, color }: { course: CourseGrades; color: string }
   const ungraded = course.items.filter((i) => i.grade == null);
 
   return (
-    // keyed by the caller so switching classes eases the panel in
-    <div className="animate-msg-in">
-      <div className="flex flex-wrap items-start justify-between gap-x-8 gap-y-4">
+    // keyed by the caller so switching classes eases the panel in; the
+    // header + meter stay put, the item bars scroll inside the pane
+    <div className="animate-msg-in flex lg:h-full min-h-0 flex-col">
+      <div className="flex shrink-0 flex-wrap items-start justify-between gap-x-8 gap-y-4">
         <div className="min-w-0">
           <h3 className="flex items-center gap-2.5 font-display text-lg font-semibold text-zinc-100">
             <span
@@ -199,7 +201,7 @@ function CourseDetail({ course, color }: { course: CourseGrades; color: string }
       </div>
 
       {/* Points meter: earned · lost · still in play (2px surface gaps) */}
-      <div className="mt-6 flex h-3 gap-[2px] overflow-hidden rounded-full">
+      <div className="mt-5 flex h-3 shrink-0 gap-[2px] overflow-hidden rounded-full">
         {s.earned > 0 && (
           <div
             className="transition-all duration-500"
@@ -222,7 +224,7 @@ function CourseDetail({ course, color }: { course: CourseGrades; color: string }
           />
         )}
       </div>
-      <div className="mt-2.5 flex flex-wrap gap-x-5 gap-y-1 font-mono text-[11px] text-zinc-500">
+      <div className="mt-2.5 flex shrink-0 flex-wrap gap-x-5 gap-y-1 font-mono text-[11px] text-zinc-500">
         <span className="inline-flex items-center gap-1.5">
           <span className="h-2 w-2 rounded-full" style={{ backgroundColor: color }} />
           {fmtPts(s.earned)} earned
@@ -242,30 +244,32 @@ function CourseDetail({ course, color }: { course: CourseGrades; color: string }
         </span>
       </div>
 
-      {graded.length > 0 && (
-        <div className="mt-8">
-          <h4 className="mb-2 font-display text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
-            Graded
-          </h4>
-          <div className="divide-y divide-white/[0.04]">
-            {graded.map((item, i) => (
-              <ItemBar key={i} item={item} color={color} />
-            ))}
+      <div className="mt-4 min-h-0 flex-1 lg:overflow-y-auto pr-1">
+        {graded.length > 0 && (
+          <div className="mt-2">
+            <h4 className="mb-2 font-display text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
+              Graded
+            </h4>
+            <div className="divide-y divide-white/[0.04]">
+              {graded.map((item, i) => (
+                <ItemBar key={i} item={item} color={color} />
+              ))}
+            </div>
           </div>
-        </div>
-      )}
-      {ungraded.length > 0 && (
-        <div className="mt-8">
-          <h4 className="mb-2 font-display text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-600">
-            Not graded yet
-          </h4>
-          <div className="divide-y divide-white/[0.04]">
-            {ungraded.map((item, i) => (
-              <ItemBar key={i} item={item} color={color} />
-            ))}
+        )}
+        {ungraded.length > 0 && (
+          <div className="mt-6">
+            <h4 className="mb-2 font-display text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-600">
+              Not graded yet
+            </h4>
+            <div className="divide-y divide-white/[0.04]">
+              {ungraded.map((item, i) => (
+                <ItemBar key={i} item={item} color={color} />
+              ))}
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
@@ -281,28 +285,28 @@ export function GradesPanel({
   if (!courses.length)
     return (
       <p className="py-10 text-sm text-zinc-500">
-        No grades yet — they appear here as soon as your platforms report graded (or gradable)
-        work.
+        No grades yet — they appear here as soon as your platforms report graded (or gradable) work.
       </p>
     );
 
-  const selected =
-    courses.find((c) => c.course_id === selectedId) ?? courses[0];
+  const selected = courses.find((c) => c.course_id === selectedId) ?? courses[0];
 
   return (
-    <div className="grid gap-10 pt-2 lg:grid-cols-3 lg:gap-12">
-      <aside>
-        <h2 className="mb-4 font-display text-[11px] font-semibold uppercase tracking-[0.22em] text-zinc-500">
+    <div className="grid lg:h-full min-h-0 gap-8 lg:grid-cols-3 lg:gap-12">
+      <aside className="flex min-h-0 flex-col">
+        <h2 className="mb-4 shrink-0 font-display text-[11px] font-semibold uppercase tracking-[0.22em] text-zinc-500">
           Classes
         </h2>
-        <CourseNav
-          courses={courses}
-          colors={colors}
-          selected={selected.course_id}
-          onSelect={setSelectedId}
-        />
+        <div className="min-h-0 flex-1 lg:overflow-y-auto pr-1">
+          <CourseNav
+            courses={courses}
+            colors={colors}
+            selected={selected.course_id}
+            onSelect={setSelectedId}
+          />
+        </div>
       </aside>
-      <section className="lg:col-span-2">
+      <section className="min-h-0 lg:col-span-2">
         <CourseDetail
           key={selected.course_id}
           course={selected}
