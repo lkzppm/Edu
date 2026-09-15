@@ -47,7 +47,8 @@ def _summary(tasks: list[Task]) -> TasksSummary:
     day_start = local_now.replace(hour=0, minute=0, second=0, microsecond=0).astimezone(UTC)
     day_end = day_start + timedelta(days=1)
     week_end = day_start + timedelta(days=7)
-    todo = [t for t in tasks if t.status == "todo" and t.due_at is not None]
+    # Exams live in the Tests tab, not the to-do counts (2026-09-14).
+    todo = [t for t in tasks if t.status == "todo" and t.due_at is not None and t.kind != "exam"]
     return TasksSummary(
         overdue=sum(1 for t in todo if t.due_at < now),
         due_today=sum(1 for t in todo if day_start <= t.due_at < day_end and t.due_at >= now),
@@ -90,17 +91,19 @@ def create_task(body: ManualTaskRequest, session: Session = Depends(get_db)) -> 
             due_at = due_at.replace(tzinfo=ZoneInfo(get_settings().timezone))
     if body.course_id is not None and session.get(Course, body.course_id) is None:
         raise HTTPException(status_code=404, detail="Course not found")
+    if body.kind == "exam" and (due_at is None or body.course_id is None):
+        raise HTTPException(status_code=422, detail="A test needs a date and a class")
     task = Task(
         course_id=body.course_id,
         external_id=None,
-        kind="manual",
+        kind=body.kind,
         title=body.title.strip(),
         description=body.description.strip(),
         due_at=due_at,
     )
     session.add(task)
     session.commit()
-    return _out(task)
+    return _out(task, class_display(session))
 
 
 @router.patch("/{task_id}", response_model=TaskOut)
@@ -123,7 +126,8 @@ def delete_task(task_id: int, session: Session = Depends(get_db)):
     task = session.get(Task, task_id)
     if task is None:
         raise HTTPException(status_code=404, detail="Task not found")
-    if task.kind != "manual":
+    # Synced rows have an external_id; user-added ones (to-dos, tests) don't.
+    if task.external_id is not None:
         raise HTTPException(status_code=409, detail="Synced tasks are dismissed, not deleted")
     session.delete(task)
     session.commit()

@@ -10,7 +10,7 @@ One row per connected platform instance (`connector`: `moodle` | `classroom` | `
 
 ## Course
 
-`(account_id, external_id)` unique. `name`, `code` (short name), `url` (deep link to the course on its platform), `hidden` (user toggle — hidden courses drop out of the dashboard but keep syncing).
+`(account_id, external_id)` unique. `name`, `code` (short name), `url` (deep link to the course on its platform), `hidden` (user toggle — hidden courses drop out of the dashboard but keep syncing), `no_tests` (user toggle, 2026-09-14 — the class is graded without tests; the Tests tab lists it under "Graded without tests" instead of "no dates yet"). Both toggles are Edu-only and never touched by a sync; `PATCH /courses/{id}` takes either or both.
 
 ## Task
 
@@ -19,8 +19,8 @@ The unified unit — assignment, quiz, exam, calendar event, or manual to-do.
 | Field | Notes |
 |---|---|
 | `course_id` | nullable — manual tasks may be course-less |
-| `external_id` | e.g. `assign:123`, `quiz:45`, `cw:abc`, `event:9`; null for manual. Unique per course. |
-| `kind` | `assignment` \| `quiz` \| `exam` \| `event` \| `activity` \| `manual` |
+| `external_id` | e.g. `assign:123`, `quiz:45`, `cw:abc`, `event:9`; null for user-added rows (manual to-dos and hand-added tests). Unique per course. |
+| `kind` | `assignment` \| `quiz` \| `exam` \| `event` \| `activity` \| `manual` — `POST /tasks` takes `kind` `manual` (default) or `exam` (a test date Lucas adds himself, 2026-09-14; needs `course_id` + `due_at`). `DELETE` is allowed for any row without `external_id`; synced rows are dismissed instead. |
 | `title`, `description`, `url` | description is plain text, HTML stripped, capped |
 | `due_at` | UTC; null = no due date |
 | `source_status` | what the platform says (`submitted`, `graded`, `completed`…), display-only |

@@ -53,6 +53,9 @@ class Course(Base):
     code: Mapped[str | None] = mapped_column(String(80))  # short name, e.g. COS110
     url: Mapped[str | None] = mapped_column(String(300))
     hidden: Mapped[bool] = mapped_column(Boolean, default=False)  # user toggle; still syncs
+    # User toggle: the class is graded without tests (labs/projects only), so
+    # the Tests tab lists it as such instead of "no dates yet". Edu-only.
+    no_tests: Mapped[bool] = mapped_column(Boolean, default=False)
     # Canonical class this platform course belongs to (SemesterClass.code),
     # assigned by the cowork sync via platform_url/code matching.
     class_code: Mapped[str | None] = mapped_column(String(20))

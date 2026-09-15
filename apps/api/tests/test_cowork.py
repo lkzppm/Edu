@@ -98,9 +98,7 @@ def test_sync_replaces_registry_and_links_courses(session, workspace, monkeypatc
         display_name="Claude Cowork",
         config={"dir": str(workspace)},
     )
-    moodle = Account(
-        connector="moodle", institution="Poli", display_name="Polimoodle", config={}
-    )
+    moodle = Account(connector="moodle", institution="Poli", display_name="Polimoodle", config={})
     session.add_all([account, moodle])
     session.commit()
     # One course matches by code, one by URL, one matches nothing.

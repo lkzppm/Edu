@@ -29,6 +29,7 @@ def _out(session: Session, course: Course, registry: dict[str, str] | None = Non
         code=code,
         url=course.url,
         hidden=course.hidden,
+        no_tests=course.no_tests,
         pending=pending,
     )
 
@@ -49,6 +50,9 @@ def update_course(
     course = session.get(Course, course_id, options=[joinedload(Course.account)])
     if course is None:
         raise HTTPException(status_code=404, detail="Course not found")
-    course.hidden = body.hidden
+    if body.hidden is not None:
+        course.hidden = body.hidden
+    if body.no_tests is not None:
+        course.no_tests = body.no_tests
     session.commit()
     return _out(session, course)

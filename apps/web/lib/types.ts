@@ -30,6 +30,8 @@ export type Course = {
   code: string | null;
   url: string | null;
   hidden: boolean;
+  /** Edu-only toggle: graded without tests (Tests tab lists it as such). */
+  no_tests: boolean;
   pending: number;
 };
 

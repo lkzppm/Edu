@@ -42,6 +42,13 @@ def _migrate(engine) -> None:
         conn.execute(text("ALTER TABLE grade_items ADD COLUMN IF NOT EXISTS url varchar(500)"))
         # 2026-08-26: canonical class linking (cowork connector).
         conn.execute(text("ALTER TABLE courses ADD COLUMN IF NOT EXISTS class_code varchar(20)"))
+        # 2026-09-14: "no tests" user toggle for the Tests tab.
+        conn.execute(
+            text(
+                "ALTER TABLE courses ADD COLUMN IF NOT EXISTS no_tests boolean "
+                "NOT NULL DEFAULT false"
+            )
+        )
 
 
 def get_db():

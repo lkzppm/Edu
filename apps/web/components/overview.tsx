@@ -274,7 +274,7 @@ export function Planner({
           ))}
         </div>
         <span className="hidden font-mono text-[10px] text-zinc-600 sm:inline">
-          ◆ test · ● task
+          ◆ quiz · ● task
         </span>
       </div>
       {/* keyed by mode so each view eases in on switch */}

@@ -63,9 +63,10 @@ def _as_content(data) -> dict:
 @tool(
     "get_tasks",
     "All tasks across every class plus the summary (overdue, due today, due this week, "
-    "done in 7 days). Each task: title, course, kind (assignment/quiz/exam/personal), "
+    "done in 7 days). Each task: id, title, course, kind (assignment/quiz/exam/manual), "
     "due date (UTC ISO), status (todo/done), source status (submitted/graded), link. "
-    "Use for anything about homework, deadlines, tests or what's due.",
+    "Use for anything about homework, deadlines, tests or what's due — and to find the "
+    "id of a task before delete_task.",
     {},
 )
 async def get_tasks(args):
@@ -153,11 +154,42 @@ def _match_course(courses: list[dict], wanted: str) -> int | None:
     return None
 
 
+async def _resolve_course(wanted: str) -> tuple[int | None, dict | None]:
+    """Class code/name → course id, or (None, error payload) when nothing matches."""
+    courses = await _get_json("/courses")
+    course_id = _match_course(courses, wanted)
+    if course_id is None:
+        # The registry's canonical codes can differ from the platform's.
+        college = await _get_json("/college")
+        classes = [
+            {
+                "id": c["course_id"],
+                "code": c.get("code"),
+                "name": c.get("name"),
+                "hidden": False,
+            }
+            for c in college.get("classes", [])
+            if c.get("course_id") is not None
+        ]
+        course_id = _match_course(classes, wanted)
+    if course_id is None:
+        return None, {
+            "error": f"No class matches {wanted!r} — ask which one, or omit it.",
+            "classes": [
+                {"code": c.get("code"), "name": c.get("name")}
+                for c in courses
+                if not c.get("hidden")
+            ],
+        }
+    return course_id, None
+
+
 @tool(
     "create_task",
     "Add a personal to-do to Edu's task list, optionally attached to one class. "
     "Edu-only: it lives in the dashboard and is never pushed to Moodle, Classroom or "
-    "any platform. Use when Lucas asks to remember, add, note or schedule something. "
+    "any platform. Use when Lucas asks to remember, add, note or schedule something — "
+    "but NOT for a prova/exam/test: those go through create_test. "
     "due_at is LOCAL time (America/Sao_Paulo) as 'YYYY-MM-DDTHH:MM' — never UTC. "
     "'course' takes a class code or name (e.g. 'EEL770'); leave it out for a task "
     "that belongs to no class.",
@@ -186,33 +218,9 @@ async def create_task(args):
     course_id = None
     wanted = str(args.get("course") or "").strip()
     if wanted:
-        courses = await _get_json("/courses")
-        course_id = _match_course(courses, wanted)
-        if course_id is None:
-            # The registry's canonical codes can differ from the platform's.
-            college = await _get_json("/college")
-            classes = [
-                {
-                    "id": c["course_id"],
-                    "code": c.get("code"),
-                    "name": c.get("name"),
-                    "hidden": False,
-                }
-                for c in college.get("classes", [])
-                if c.get("course_id") is not None
-            ]
-            course_id = _match_course(classes, wanted)
-        if course_id is None:
-            return _as_content(
-                {
-                    "error": f"No class matches {wanted!r} — ask which one, or omit it.",
-                    "classes": [
-                        {"code": c.get("code"), "name": c.get("name")}
-                        for c in courses
-                        if not c.get("hidden")
-                    ],
-                }
-            )
+        course_id, error = await _resolve_course(wanted)
+        if error:
+            return _as_content(error)
 
     return _as_content(
         await _post_json(
@@ -227,6 +235,107 @@ async def create_task(args):
     )
 
 
+@tool(
+    "create_test",
+    "Add a TEST (prova, exam, P1/P2, final) date to Edu's Tests tab for one class. "
+    "Not a to-do: tests never go in the task list — use this, never create_task, when "
+    "Lucas mentions a prova/exam/test. Edu-only, never pushed to any platform. "
+    "due_at is LOCAL time (America/Sao_Paulo) as 'YYYY-MM-DDTHH:MM' — never UTC; when he "
+    "gives only a day use that day at the class's usual time if you know it, else 23:59. "
+    "'course' is the class code or name (e.g. 'COS242', 'grafos') and is required.",
+    {
+        "type": "object",
+        "properties": {
+            "title": {
+                "type": "string",
+                "description": "The test's name as he'd call it, e.g. 'P1' or 'Prova final'.",
+            },
+            "due_at": {
+                "type": "string",
+                "description": "Local date/time, ISO 'YYYY-MM-DDTHH:MM'.",
+            },
+            "course": {
+                "type": "string",
+                "description": "Class code or name the test belongs to.",
+            },
+            "description": {
+                "type": "string",
+                "description": "Optional notes (room, topics).",
+            },
+        },
+        "required": ["title", "due_at", "course"],
+    },
+)
+async def create_test(args):
+    title = str(args.get("title") or "").strip()
+    due_at = str(args.get("due_at") or "").strip()
+    wanted = str(args.get("course") or "").strip()
+    if not title or not due_at or not wanted:
+        return _as_content(
+            {"error": "title, due_at and course are all required for a test"}
+        )
+    course_id, error = await _resolve_course(wanted)
+    if error:
+        return _as_content(error)
+    return _as_content(
+        await _post_json(
+            "/tasks",
+            {
+                "title": title,
+                "description": str(args.get("description") or "").strip(),
+                "due_at": due_at,
+                "course_id": course_id,
+                "kind": "exam",
+            },
+        )
+    )
+
+
+@tool(
+    "delete_task",
+    "Remove one task or test from Edu by id (find it with get_tasks first; never guess "
+    "an id). Rows Lucas added himself (to-dos, hand-added tests) are deleted for good; "
+    "rows synced from a platform can't be deleted (Edu is read-only against the "
+    "platforms) — they are dismissed instead, which hides them from Edu until he asks "
+    "for them back. The result says which happened. Ask before acting when more than one "
+    "task could be the one he means.",
+    {
+        "type": "object",
+        "properties": {
+            "id": {"type": "integer", "description": "The task id from get_tasks."},
+        },
+        "required": ["id"],
+    },
+)
+async def delete_task(args):
+    try:
+        task_id = int(args.get("id"))
+    except (TypeError, ValueError):
+        return _as_content({"error": "id must be an integer from get_tasks"})
+    async with httpx.AsyncClient(base_url=API_BASE, timeout=30) as client:
+        resp = await client.delete(f"/tasks/{task_id}")
+        if resp.status_code == 409:
+            # Synced row — the read-only rule: hide it, don't delete it.
+            resp = await client.patch(f"/tasks/{task_id}", json={"status": "dismissed"})
+            if resp.is_error:
+                return _as_content({"error": f"api returned {resp.status_code}"})
+            task = resp.json()
+            return _as_content(
+                {
+                    "result": "dismissed",
+                    "note": "Synced from a platform, so it was hidden rather than deleted.",
+                    "task": {
+                        k: task.get(k) for k in ("id", "title", "course_code", "kind")
+                    },
+                }
+            )
+        if resp.is_error:
+            body = resp.json()
+            detail = body.get("detail") if isinstance(body, dict) else None
+            return _as_content({"error": detail or f"api returned {resp.status_code}"})
+        return _as_content({"result": "deleted", "id": task_id})
+
+
 EDU_TOOLS = [
     get_tasks,
     get_grades,
@@ -235,6 +344,8 @@ EDU_TOOLS = [
     get_connectors,
     sync_connector,
     create_task,
+    create_test,
+    delete_task,
 ]
 edu_server = create_sdk_mcp_server(name="edu", version="1.0.0", tools=EDU_TOOLS)
 
@@ -259,6 +370,12 @@ rule); his own data always comes from the tools.
 you to remember/add/note something, attach it to the class he named (code or name), and \
 convert the date he says to LOCAL time 'YYYY-MM-DDTHH:MM'. Confirm in one line what you \
 added (title, class, date). If the class is ambiguous, ask instead of guessing.
+- create_test adds a TEST date (prova, exam, P1/P2, final) to the Tests tab. A test is never \
+a to-do: whenever he mentions a prova/exam/test, use create_test, not create_task. It needs \
+the class and the date; ask for whichever is missing.
+- delete_task removes a to-do or test he no longer wants: get_tasks first to find the id, \
+then delete. His own rows are deleted; platform rows can only be dismissed (hidden) — say \
+which happened. If several tasks could match, list them and ask.
 
 Advice rules:
 - Be concrete and anchored in his actual data: which task, which class, how many points, \
@@ -276,7 +393,8 @@ earn its place — never dump everything a tool returned.
 of help, no headers unless the answer genuinely needs structure.
 - Never use emojis or decorative symbols. Plain text, short tables or bullet lists only.
 - You are read-only against the platforms: you cannot submit work or change grades. You \
-can trigger a data re-sync with sync_connector, and add local to-dos with create_task.
+can trigger a data re-sync with sync_connector, add local to-dos with create_task and test \
+dates with create_test, remove them with delete_task.
 - If a connector shows an error or stale data, mention it so numbers are read with care."""
 
 CHAT_OPTIONS = {
@@ -290,6 +408,8 @@ CHAT_OPTIONS = {
         "mcp__edu__get_connectors",
         "mcp__edu__sync_connector",
         "mcp__edu__create_task",
+        "mcp__edu__create_test",
+        "mcp__edu__delete_task",
         "WebSearch",
         "WebFetch",
     ],

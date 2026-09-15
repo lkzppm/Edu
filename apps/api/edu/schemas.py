@@ -1,3 +1,5 @@
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 # ── connectors ────────────────────────────────────────────────
@@ -60,11 +62,15 @@ class CourseOut(BaseModel):
     code: str | None
     url: str | None
     hidden: bool
+    no_tests: bool
     pending: int
 
 
 class CourseUpdateRequest(BaseModel):
-    hidden: bool
+    """Partial update — only the fields sent change (both are Edu-only toggles)."""
+
+    hidden: bool | None = None
+    no_tests: bool | None = None
 
 
 # ── tasks ─────────────────────────────────────────────────────
@@ -130,6 +136,8 @@ class ManualTaskRequest(BaseModel):
     description: str = ""
     due_at: str | None = None  # ISO 8601
     course_id: int | None = None
+    # "manual" = a to-do; "exam" = a test date Lucas adds himself (Tests tab).
+    kind: Literal["manual", "exam"] = "manual"
 
 
 class TaskUpdateRequest(BaseModel):

@@ -8,6 +8,7 @@ import {
   BookIcon,
   BrainIcon,
   Button,
+  CalendarIcon,
   CapIcon,
   CloseIcon,
   GlobeIcon,
@@ -73,6 +74,8 @@ const TOOL_META: Record<
   },
   sync_connector: { label: "triggered a sync", active: "syncing", icon: RefreshIcon },
   create_task: { label: "added a to-do", active: "adding a to-do", icon: PlusIcon },
+  create_test: { label: "added a test", active: "adding a test", icon: CalendarIcon },
+  delete_task: { label: "removed a task", active: "removing a task", icon: TrashIcon },
   WebSearch: { label: "searched the web", active: "searching the web", icon: SearchIcon },
   WebFetch: { label: "read a web page", active: "reading a web page", icon: GlobeIcon },
 };
