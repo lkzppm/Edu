@@ -12,6 +12,10 @@ One connector for any Moodle site. UFRJ (`https://moodle.cos.ufrj.br/`) and Poli
 - paste a **web-service token** directly (Moodle → Preferences → Security keys, "Moodle mobile web service"), or
 - enter username + password: the api exchanges them at `POST {base}/login/token.php?service=moodle_mobile_app` and stores **only the token** — the password is never persisted or logged.
 
+**Expiry and re-auth.** A dead credential raises `AuthError` (a `ConnectorError` subclass), which parks the account at `sync_status="auth"` instead of the generic `error` — see [data-model.md](data-model.md). Moodle raises it on errorcodes `invalidtoken`, `expiredtoken`, `tokennotfound` and on a rejected `login/token.php` (`invalidlogin`, `usernotconfirmed`) — but **not** on `accessexception`, which is per-function access and keeps failing soft; Classroom on OAuth `invalid_grant` (refresh token revoked/expired) or a 401. Transport failures (an expired site certificate, DNS, timeouts) stay `error` — a new token wouldn't fix them. The mid-sync fail-soft blocks re-raise `AuthError` so a token revoked halfway through parks the account rather than silently syncing partial data.
+
+Renewal keeps the account row: `POST /connectors/accounts/{id}/reauth` takes `{token}` or `{username, password}`, validates against the stored `base_url` with `core_webservice_get_site_info` before storing, then resumes syncing. Classroom renews through OAuth — `GET /connectors/classroom/auth-url?account_id={id}` puts the id in `state` (`edu:{id}`) and the callback swaps the refresh token on that row instead of creating a second account.
+
 `config`: `{base_url, token}`. The connect route validates by calling `core_webservice_get_site_info` before storing (fail fast, and it yields `userid` + `sitename`).
 
 **Calls per sync** (`{base}/webservice/rest/server.php`, `moodlewsrestformat=json`; arrays flattened Moodle-style `key[0]=…`):

@@ -13,13 +13,13 @@
 - [ ] Google Cloud project + OAuth consent screen (needs Lucas's Google account)
 
 - [x] Grades tab (2026-08-24): Moodle gradebook + Classroom graded coursework → per-course grade cards
+- [x] Edu chat agent (2026-08-26): Fin's chat overlay + Claude Agent SDK container with tools over tasks/grades/college (⌘⇧E)
 
 ## v2 — ideas (not committed)
 
 - Announcements feed (Classroom announcements, Moodle forum posts)
 - Weekly digest notification (email or ntfy) — "what's due this week", Sunday evening
 - ICS export of due dates/tests for Google Calendar
-- Edu agent (Claude) like Fin's: "what should I do first today?"
 
 ## Notes
 

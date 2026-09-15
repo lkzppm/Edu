@@ -13,7 +13,13 @@ import httpx
 from sqlalchemy.orm import Session
 
 from edu.config import get_settings
-from edu.connectors.base import ConnectorError, replace_grades, upsert_course, upsert_tasks
+from edu.connectors.base import (
+    AuthError,
+    ConnectorError,
+    replace_grades,
+    upsert_course,
+    upsert_tasks,
+)
 from edu.models import Account
 
 logger = logging.getLogger("edu.connectors.classroom")
@@ -31,7 +37,9 @@ DONE_STATES = {"TURNED_IN", "RETURNED"}
 # ── OAuth ─────────────────────────────────────────────────────
 
 
-def auth_url() -> str:
+def auth_url(account_id: int | None = None) -> str:
+    """`account_id` re-authenticates an existing account in place — the callback
+    reads it back out of `state` and swaps the refresh token on that row."""
     settings = get_settings()
     if not settings.classroom_enabled:
         raise ConnectorError("Google credentials missing — set GOOGLE_CLIENT_ID/SECRET in .env.")
@@ -43,7 +51,7 @@ def auth_url() -> str:
             "scope": " ".join(SCOPES),
             "access_type": "offline",  # ensures a refresh_token
             "prompt": "consent",
-            "state": "edu",
+            "state": f"edu:{account_id}" if account_id else "edu",
         }
     )
     return f"{AUTH_URL}?{query}"
@@ -65,7 +73,12 @@ def _token_request(data: dict) -> dict:
     except httpx.HTTPError as exc:
         raise ConnectorError(f"Google unreachable ({exc.__class__.__name__})") from exc
     if resp.status_code != 200 or "error" in payload:
-        raise ConnectorError(f"Google OAuth failed: {payload.get('error', resp.status_code)}")
+        error = payload.get("error", resp.status_code)
+        # invalid_grant = the refresh token was revoked or expired; only a new
+        # sign-in fixes it.
+        if error == "invalid_grant":
+            raise AuthError("Google sign-in expired — sign in again to renew access.")
+        raise ConnectorError(f"Google OAuth failed: {error}")
     return payload
 
 
@@ -108,6 +121,8 @@ def _get(access_token: str, path: str, params: dict | None = None) -> dict:
         raise ConnectorError(f"Classroom unreachable ({exc.__class__.__name__})") from exc
     if resp.status_code == 404:
         return {}
+    if resp.status_code == 401:
+        raise AuthError("Google denied access — sign in again to renew the grant.")
     if resp.status_code != 200:
         raise ConnectorError(f"Classroom API error {resp.status_code}")
     return resp.json()

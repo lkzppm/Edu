@@ -63,6 +63,80 @@ body::before {
   animation: fade-in 0.25s ease-out both;
 }
 
+/* Newly streamed words emerge — fade + un-blur + slight rise (spans from the markdown plugin) */
+@keyframes seg-in {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+.fade-seg {
+  display: inline-block;
+  animation: seg-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Tool icon joining the row — grows into place so neighbors slide over smoothly */
+@keyframes tool-in {
+  from {
+    width: 0;
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  to {
+    width: 1.5rem;
+    opacity: 1;
+    transform: none;
+  }
+}
+.animate-tool-in {
+  animation: tool-in 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Activity label swap — the new status rises in; no fill so the exit transition can take over */
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.animate-rise-in {
+  animation: rise-in 0.22s ease-out;
+}
+
+/* Live activity label — light sweep across the text while the agent works */
+@keyframes shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+.animate-shimmer {
+  background: linear-gradient(90deg, #71717a 40%, #e4e4e7 50%, #71717a 60%);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: shimmer 1.8s linear infinite;
+}
+
+@keyframes caret-blink {
+  50% {
+    opacity: 0;
+  }
+}
+.animate-caret {
+  animation: caret-blink 1s steps(1) infinite;
+}
+
 /* Task row leaving the todo pile — collapse + fade */
 @keyframes task-done {
   from {

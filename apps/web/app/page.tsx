@@ -1,13 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { ChatOverlay } from "@/components/chat-overlay";
 import { CollegePanel, nextClass } from "@/components/college";
 import { ConnectorsPanel } from "@/components/connectors-panel";
 import { CoworkButton } from "@/components/cowork";
 import { upcomingExams } from "@/components/exams";
 import { GradesPanel } from "@/components/grades";
 import { CourseLoad, dayKey, Planner } from "@/components/overview";
-import { QuickAdd, TaskList, TaskView, ViewSwitch } from "@/components/tasks";
+import { AddTaskDialog, TaskList, TaskView, ViewSwitch } from "@/components/tasks";
 import { CalendarIcon, CloseIcon, PlugIcon, PlusIcon } from "@/components/ui";
 import { api } from "@/lib/api";
 import { courseColorMap } from "@/lib/colors";
@@ -45,6 +46,7 @@ export default function Home() {
   const [view, setView] = useState<TaskView>("pending");
   const [showAdd, setShowAdd] = useState(false);
   const [panelOpen, setPanelOpen] = useState(false);
+  const [showChat, setShowChat] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -86,6 +88,18 @@ export default function Home() {
     const id = setInterval(load, 3_000);
     return () => clearInterval(id);
   }, [anySyncing, load]);
+
+  // ⌘⇧E (mac) / Ctrl+Shift+E toggles the Edu chat from anywhere.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === "e") {
+        e.preventDefault();
+        setShowChat((v) => !v);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   const colors = useMemo(() => courseColorMap(courses.map((c) => c.id)), [courses]);
 
@@ -148,18 +162,18 @@ export default function Home() {
   return (
     <main className="mx-auto min-h-screen max-w-6xl px-5 pb-28">
       {/* Navbar */}
-      <header className="flex items-center justify-between py-6">
-        <h1 className="flex-1 font-display text-xl font-semibold tracking-tight">
+      <header className="flex items-center gap-4 py-6">
+        <h1 className="font-display text-xl font-semibold tracking-tight">
           Edu<span className="text-accent">.</span>
         </h1>
-        <nav className="flex gap-1 rounded-xl bg-white/[0.04] p-1 font-display text-xs font-medium">
+        <nav className="ml-6 flex gap-0.5 text-xs">
           {(["tasks", "grades", "college"] as const).map((p) => (
             <button
               key={p}
               onClick={() => setPanel(p)}
-              className={`rounded-lg px-4 py-1.5 capitalize transition-colors ${
+              className={`rounded-full px-3 py-1.5 font-mono capitalize transition-colors ${
                 panel === p
-                  ? "bg-accent/15 text-cyan-300"
+                  ? "bg-white/[0.07] text-zinc-100"
                   : "text-zinc-500 hover:text-zinc-200"
               }`}
             >
@@ -167,7 +181,7 @@ export default function Home() {
             </button>
           ))}
         </nav>
-        <div className="flex flex-1 items-center justify-end gap-1">
+        <div className="ml-auto flex items-center gap-1">
         <CoworkButton
           conn={cowork}
           classesCount={college?.classes.length ?? 0}
@@ -312,30 +326,14 @@ export default function Home() {
                 onChange={setView}
               />
               <button
-                onClick={() => setShowAdd(!showAdd)}
-                className={`inline-flex items-center gap-1 font-mono text-[11px] transition-colors ${
-                  showAdd ? "text-accent" : "text-zinc-400 hover:text-zinc-200"
-                }`}
+                onClick={() => setShowAdd(true)}
+                className="inline-flex items-center gap-1 font-mono text-[11px] text-zinc-400 transition-colors hover:text-zinc-200"
               >
-                <PlusIcon
-                  className={`h-3 w-3 transition-transform duration-200 ${
-                    showAdd ? "rotate-45" : ""
-                  }`}
-                />
+                <PlusIcon className="h-3 w-3" />
                 add
               </button>
             </div>
           </div>
-          {showAdd && (
-            <div className="mb-6 animate-msg-in">
-              <QuickAdd
-                onAdded={() => {
-                  setShowAdd(false);
-                  load();
-                }}
-              />
-            </div>
-          )}
           {data ? (
             <TaskList
               // remount on any filter/view change so the list eases in
@@ -370,7 +368,37 @@ export default function Home() {
         </div>
       )}
 
+      {/* ── Edu dot — always bottom center ─────────────────── */}
+      <button
+        onClick={() => setShowChat(true)}
+        aria-label="Chat with Edu"
+        title="Chat with Edu"
+        className={`group fixed bottom-5 left-1/2 z-30 -translate-x-1/2 p-3 transition-opacity duration-300 ${
+          showChat ? "pointer-events-none opacity-0" : "opacity-100"
+        }`}
+      >
+        <span className="relative block h-3.5 w-3.5">
+          <span className="absolute inset-0 block animate-ping rounded-full bg-accent opacity-30 [animation-duration:2.5s]" />
+          <span className="relative block h-3.5 w-3.5 rounded-full bg-accent shadow-glow transition-transform duration-200 group-hover:scale-125" />
+        </span>
+        <span className="pointer-events-none absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap font-mono text-[10px] uppercase tracking-widest text-zinc-500 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+          ask edu <span className="ml-1 text-zinc-600">⌘⇧E</span>
+        </span>
+      </button>
+
+      <AddTaskDialog
+        open={showAdd}
+        courses={courses}
+        colors={colors}
+        defaultCourseId={filterCourse}
+        onClose={() => setShowAdd(false)}
+        onAdded={() => {
+          setShowAdd(false);
+          load();
+        }}
+      />
       <ConnectorsPanel open={panelOpen} onClose={() => setPanelOpen(false)} onChanged={load} />
+      <ChatOverlay open={showChat} onClose={() => setShowChat(false)} />
     </main>
   );
 }

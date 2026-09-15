@@ -18,6 +18,7 @@ from edu.schemas import (
     ConnectorsResponse,
     ConnectorStatus,
     MoodleConnectRequest,
+    MoodleReauthRequest,
 )
 
 router = APIRouter()
@@ -27,6 +28,9 @@ CONNECTOR_NAMES = ("moodle", "classroom", "compasso", "cowork")
 # Page-open refresh only touches accounts older than this — opening the
 # dashboard repeatedly must never hammer the platforms.
 REFRESH_STALE_MINUTES = 15
+
+# Connector types whose credential can be replaced on the existing account row.
+REAUTHABLE = ("moodle", "classroom")
 
 
 def _status(session: Session, account: Account) -> ConnectorStatus:
@@ -54,6 +58,12 @@ def _status(session: Session, account: Account) -> ConnectorStatus:
         courses=course_count,
         tasks_pending=pending,
         demo=bool(account.config.get("demo")),
+        needs_auth=account.sync_status == "auth",
+        reauth=(
+            account.connector
+            if account.connector in REAUTHABLE and not account.config.get("demo")
+            else None
+        ),
     )
 
 
@@ -186,9 +196,10 @@ def connect_cowork(tasks: BackgroundTasks, session: Session = Depends(get_db)):
 
 
 @router.get("/classroom/auth-url")
-def classroom_auth_url():
+def classroom_auth_url(account_id: int | None = None):
+    """`account_id` re-authenticates that account in place instead of adding one."""
     try:
-        return {"url": classroom_connector.auth_url()}
+        return {"url": classroom_connector.auth_url(account_id)}
     except ConnectorError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
 
@@ -198,6 +209,7 @@ def classroom_callback(
     tasks: BackgroundTasks,
     code: str | None = None,
     error: str | None = None,
+    state: str | None = None,
     session: Session = Depends(get_db),
 ):
     """OAuth redirect target (reached through the web proxy). Returns a tiny
@@ -215,14 +227,26 @@ def classroom_callback(
             f"<p style='font-family:sans-serif'>{exc} <a href='/'>Back to Edu</a></p>",
             status_code=502,
         )
-    account = _create_account(
-        session,
-        "classroom",
-        institution="Google Classroom",
-        display_name="Google Classroom",
-        base_url=None,
-        config={"refresh_token": refresh_token},
-    )
+    # state "edu:<id>" = re-auth of an existing account — keep its courses and
+    # tasks, swap only the credential.
+    existing = None
+    if state and state.startswith("edu:") and state.removeprefix("edu:").isdigit():
+        existing = session.get(Account, int(state.removeprefix("edu:")))
+    if existing is not None and existing.connector == "classroom":
+        existing.config = {**existing.config, "refresh_token": refresh_token}
+        existing.sync_status = "syncing"
+        existing.last_error = None
+        session.commit()
+        account = existing
+    else:
+        account = _create_account(
+            session,
+            "classroom",
+            institution="Google Classroom",
+            display_name="Google Classroom",
+            base_url=None,
+            config={"refresh_token": refresh_token},
+        )
     tasks.add_task(run_sync_account, account.id)
     home = get_settings().web_origin.rstrip("/") + "/" if get_settings().web_origin else "/"
     return HTMLResponse(
@@ -262,7 +286,7 @@ def refresh_stale(tasks: BackgroundTasks, session: Session = Depends(get_db)):
     stale = [
         acc
         for acc in session.scalars(select(Account))
-        if acc.sync_status != "syncing"
+        if acc.sync_status not in ("syncing", "auth")  # parked accounts wait for a new credential
         and (
             acc.last_sync_at is None
             or now - acc.last_sync_at > timedelta(minutes=REFRESH_STALE_MINUTES)
@@ -285,6 +309,43 @@ def sync_account(account_id: int, tasks: BackgroundTasks, session: Session = Dep
     session.commit()
     tasks.add_task(run_sync_account, account_id)
     return {"status": "syncing"}
+
+
+@router.post("/accounts/{account_id}/reauth", status_code=202)
+def reauth_account(
+    account_id: int,
+    body: MoodleReauthRequest,
+    tasks: BackgroundTasks,
+    session: Session = Depends(get_db),
+):
+    """Swap a fresh credential onto the SAME account row and resume syncing.
+
+    Courses, tasks and their local done/dismissed state (rule 6) are untouched —
+    disconnect + reconnect would drop them with the account and hand every task
+    a new id. Classroom goes through the OAuth flow instead (auth-url?account_id).
+    """
+    account = session.get(Account, account_id)
+    if account is None:
+        raise HTTPException(status_code=404, detail="Account not found")
+    if account.connector != "moodle" or account.config.get("demo"):
+        raise HTTPException(status_code=422, detail="This account has no token to replace.")
+    base_url = account.config["base_url"]
+    token = (body.token or "").strip()
+    try:
+        if not token:
+            if not (body.username and body.password):
+                raise ConnectorError("Provide a web-service token or username + password.")
+            token = moodle_connector.fetch_token(base_url, body.username.strip(), body.password)
+        # Same fail-fast as connect: never park a credential that doesn't work.
+        moodle_connector.call(base_url, token, "core_webservice_get_site_info")
+    except ConnectorError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    account.config = {**account.config, "token": token}  # JSON column: rebind, don't mutate
+    account.sync_status = "syncing"
+    account.last_error = None
+    session.commit()
+    tasks.add_task(run_sync_account, account.id)
+    return {"status": "syncing", "id": account.id}
 
 
 @router.delete("/accounts/{account_id}")

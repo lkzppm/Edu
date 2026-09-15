@@ -21,8 +21,27 @@ Container is `max-w-6xl` (matches Fin). Two-column on `lg`: tasks (2/3) + visual
 | **Grades panel** (2026-08-26 master–detail — Lucas: class sidebar + visual detail; supersedes the 2026-08-24 tile grid) | **Classes sidebar** (1/3): one row per course — dot, code+name, headline % (Moodle's own course total when graded, else earned/gradedMax), `N/M graded` — the row IS the selector (first course by default, selected row ringed). **Detail** (2/3, keyed → eases in on switch): header with dot+name and a **hero %** (big mono), the **points meter** — one bar, segments in fixed order with 2px surface gaps: *earned* (course color) · *lost* (course color at ~35% alpha — a red FAILED the dataviz validator vs warm course hues; same-ramp lightness passes for every course) · *in play* (white/8 track) — with a swatch legend of the three point sums, then **every item as a labeled bar**: fill = grade/max in the course color on a lighter track, value/date/link in text tokens at the row's end, grouped Graded / Not graded yet (ungraded = empty track, dimmed) |
 | **Hero row** | left: big mono count of tasks due in 7 days + chips (overdue red, today accent, done·7d emerald) + a **next-class line** (`now: EEL770 · H-213 · until 17:00` / `next: …`, from the cowork registry schedule). Center: the **planner** (below). Right: **next test** — `Xd Yh` mono countdown, title, date |
 | **Planner** (2026-08-26 — Lucas: one 3-in-1 component instead of a Tests tab + Schedule section) | `Planner` in `components/overview.tsx`, a **week \| month \| chart** segmented switch over one slot, all three driving the **same day filter** (click a day/cluster → task list filters; ✕ chip by the Tasks title clears): **week** — the original 7-day strip, course-colored dots (◆ bigger for tests), today on an accent tile; **month** — browsable ‹ › month grid, same dots (≤3 + "+"), out-of-month days dimmed; **chart** — the six-week per-class timeline (`components/timeline.tsx`): one lane per class with pending work (plus "personal"), −7d…+42d, weekly hairline ticks, ● task / ◆ test marks, accent today-line, selected day as an accent band. Follows the course filter. |
-| **Tasks (main col)** | header row holds a **pending \| done segmented switch** (with counts — done view lists completed tasks newest-first, replacing the list rather than piling under it) and a **+ add** toggle that reveals the manual quick-add form on demand (never permanently on screen); the unified list grouped **Overdue / Today / Tomorrow / This week / Later / No due date**; **Later and No due date start collapsed** when >3 items (2026-08-26 — the far horizon was tripling the page): one compact row of course-colored marks + date range, click (or the "show" toggle) expands; each row: check circle (toggles local done), title, colored course chip, kind tag, due (time only when meaningful), source badge (`submitted`/`graded`), link-out icon. Dismiss hides a synced task for good. |
+| **Tasks (main col)** | header row holds a **pending \| done segmented switch** (with counts — done view lists completed tasks newest-first, replacing the list rather than piling under it) and a **+ add** button that opens the **new-task popup** (2026-09-02 — Lucas: a real form, with the class on it): centered dialog over a blurred backdrop, small-caps labels over *What* (title), *Class* (chip row — `personal` + one course-colored chip per class, prefilled from the active course filter), *Due* (datetime) and *Notes*; Esc, ✕, Cancel or a backdrop click closes, Add posts and reloads (superseded the inline quick-add row); the unified list grouped **Overdue / Today / Tomorrow / This week / Later / No due date**; **Later and No due date start collapsed** when >3 items (2026-08-26 — the far horizon was tripling the page): one compact row of course-colored marks + date range, click (or the "show" toggle) expands; each row: check circle (toggles local done), title, colored course chip, kind tag, due (time only when meaningful), source badge (`submitted`/`graded`), link-out icon. Dismiss hides a synced task for good. |
 | **Sidebar** | **Workload** — per-course pending bars (course color, sorted by load, all non-hidden courses listed). This IS the course filter (the old chip strip was removed, 2026-08-21): clicking a row filters the whole page to that course — selected row highlighted, others dimmed — and a course-colored ✕ chip appears by the Tasks title; clicking either clears. (The tests strip is gone, 2026-08-26 — test dates live in the planner's chart/calendar and the next-test hero.) |
+
+## Chat (2026-08-26 — Fin's chat overlay, teal-shifted)
+
+Full-screen **chat overlay** over a blurred backdrop, opened by the **Edu dot**
+(pulsing accent dot fixed bottom-center, hover tooltip "ask edu ⌘⇧E") or
+**⌘⇧E / Ctrl+Shift+E** from anywhere; Esc closes (history sidebar first). The
+input is a pill — centered spotlight when the chat is empty, pinned to the
+bottom in conversation — with a morphing send ⇄ stop button, pasted-image
+attachments (max 4), and edgeless model + effort selects underneath. Answers
+stream with a steady-rate word-fade reveal (`fade-seg`), a shimmering
+activity line while the agent thinks or calls tools, and a **tool-icon row**
+above each answer (one icon per call — tasks/grades/college/courses/plug/
+sync/add/search/globe; click one to expand its params panel). Edu can also
+**add a to-do from the chat** ("remind me to hand in the EEL770 list Friday"):
+the `create_task` tool attaches it to the class named and confirms in one line. Conversations
+persist to localStorage (`edu.chats`, 50 max, images stripped), with a
+slide-in history sidebar (open/delete), "new chat", and session resume via the
+agent's session id. Missing token shows the one-time `claude setup-token`
+setup card instead of the chat.
 
 ## Course colors
 
@@ -31,7 +50,8 @@ Courses get stable entity colors from `lib/colors.ts` slots — **cool-only** (2
 ## Principles
 
 - **All copy and dates in English** (2026-08-26 — Lucas; was pt-BR): `Mon, Aug 25`, 24 h clock kept for compact mono chips; relative labels ("in 3 d", "2 d ago") in mono.
-- Timeline marks: kind never by color alone — ◆ diamond = exam/quiz, ● circle = other work; lanes are directly labeled with dot + course code, so no legend box.
+- Timeline marks: kind never by color alone — ◆ diamond = quiz (and tests, in the Tests tab), ● circle = other work; lanes are directly labeled with dot + course code, so no legend box.
 - **Freshness is always visible** — the connectors panel shows each account's `last_sync_at`; a failing source shows its error, never a blank page.
+- **Expired credentials ask, they don't delete** — an account whose token or Google grant died shows the amber `sign in again` badge, its error in amber and the line "Courses and task history are kept". A key icon beside sync/disconnect opens an inline credential form (Moodle) or bounces through Google (Classroom); both renew the same account, so nothing is lost. Disconnect stays the destructive path and keeps its confirm.
 - Responsive: usable at 390 px wide (checking tasks off from the phone between classes is the core loop).
 - Checking off is optimistic — instant UI, then PATCH; revert on failure.

@@ -17,7 +17,13 @@ import httpx
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from edu.connectors.base import ConnectorError, replace_grades, upsert_course, upsert_tasks
+from edu.connectors.base import (
+    AuthError,
+    ConnectorError,
+    replace_grades,
+    upsert_course,
+    upsert_tasks,
+)
 from edu.models import Account, Task
 
 logger = logging.getLogger("edu.connectors.moodle")
@@ -28,6 +34,13 @@ EXAM_RE = re.compile(
 )
 # Completion states 1 (complete) and 2 (complete, passed) both mean done.
 COMPLETE_STATES = {1, 2}
+# Moodle errorcodes that mean the token itself is dead — a new one is the only
+# fix, so they park the account instead of counting as a transient error.
+# Deliberately NOT here: `accessexception`, which is per-function ("token has no
+# access to THIS ws function") — that still fails soft, a restrictive site just
+# yields less.
+# (login/token.php has its own vocabulary — any rejection there is an AuthError.)
+AUTH_ERRORCODES = {"invalidtoken", "expiredtoken", "tokennotfound"}
 
 
 def _unreachable(exc: httpx.HTTPError) -> ConnectorError:
@@ -70,7 +83,10 @@ def call(base_url: str, token: str, wsfunction: str, **params):
     except httpx.HTTPError as exc:
         raise _unreachable(exc) from exc
     if isinstance(data, dict) and data.get("exception"):
-        message = data.get("message") or data.get("errorcode") or "unknown error"
+        errorcode = data.get("errorcode") or ""
+        message = data.get("message") or errorcode or "unknown error"
+        if errorcode in AUTH_ERRORCODES:
+            raise AuthError(f"Moodle rejected the token: {message}")
         raise ConnectorError(f"Moodle: {message}")
     return data
 
@@ -91,7 +107,7 @@ def fetch_token(base_url: str, username: str, password: str) -> str:
         raise _unreachable(exc) from exc
     if not isinstance(data, dict) or not data.get("token"):
         detail = data.get("error", "login rejected") if isinstance(data, dict) else "login rejected"
-        raise ConnectorError(f"Moodle login failed: {detail}")
+        raise AuthError(f"Moodle login failed: {detail}")
     return data["token"]
 
 
@@ -311,6 +327,8 @@ def sync(session: Session, account: Account) -> None:
         try:
             for ext_id, rows in fetch().items():
                 merged[ext_id].extend(rows)
+        except AuthError:
+            raise  # a token revoked mid-sync parks the account, never fails soft
         except ConnectorError as exc:
             logger.warning("moodle %s skipped for #%s: %s", label, account.id, exc)
 
@@ -354,6 +372,8 @@ def sync(session: Session, account: Account) -> None:
             ).get("statuses", [])
             completed = {s["cmid"] for s in statuses if s.get("state") in COMPLETE_STATES}
             apply_completion(rows, completed)
+        except AuthError:
+            raise
         except ConnectorError:
             pass  # completion tracking disabled on this site/course
 
@@ -379,6 +399,8 @@ def sync(session: Session, account: Account) -> None:
                     "mod_assign_get_submission_status",
                     assignid=int(row["external_id"].removeprefix("assign:")),
                 )
+            except AuthError:
+                raise
             except ConnectorError:
                 continue
             done, source_status = parse_submission(payload)
@@ -401,5 +423,7 @@ def sync(session: Session, account: Account) -> None:
                 userid=userid,
             )
             replace_grades(session, course, grade_rows(base, payload))
+        except AuthError:
+            raise
         except ConnectorError as exc:
             logger.warning("moodle grades skipped for course %s: %s", ext_id, exc)
