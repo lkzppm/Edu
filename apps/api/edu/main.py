@@ -5,8 +5,9 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from edu.db import init_db
+from edu.db import SessionLocal, init_db
 from edu.jobs.scheduler import boot_catchup, start_scheduler
+from edu.plan import seed_if_empty
 from edu.routes import college, connectors, courses, grades, tasks
 
 logging.basicConfig(level=logging.INFO)
@@ -15,6 +16,8 @@ logging.basicConfig(level=logging.INFO)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
+    with SessionLocal() as session:
+        seed_if_empty(session)  # first boot: data/degree_plan.yml → plan tables
     scheduler = start_scheduler()
     # Sync anything stale right away — heals restarts and slept-through slots.
     threading.Thread(target=boot_catchup, daemon=True).start()

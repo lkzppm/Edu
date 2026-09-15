@@ -115,38 +115,63 @@ export type SemClass = {
   work_items: CoworkItem[];
 };
 
+export type PlanStatus = "done" | "current" | "ahead";
+
 export type PlanCourse = {
   code: string;
   name: string;
-  credits?: number;
-  status?: string;
-  planned?: string;
-  note?: string;
-  at_risk?: boolean;
-  requires?: string[];
-  role?: string;
-  unlocks?: string;
+  credits: number | null;
+  /** Curriculum period; null → an extra (optative…) outside the grid. */
+  period: number | null;
+  status: PlanStatus;
+  planned: string | null;
+  note: string | null;
+  at_risk: boolean;
+  requires: string[];
+  counts_for: string | null;
+  role: string | null;
+  unlocks: string | null;
+};
+
+export type PlanRequirement = {
+  key: string;
+  label: string;
+  unit: string;
+  required: number | null;
+  done: number;
+  in_course: number;
+  computed: boolean;
+  position: number;
+};
+
+export type PlanSemester = {
+  semester: string;
+  label: string;
+  note: string | null;
+  current: boolean;
+  courses: PlanCourse[];
+  /** Free-form entries (a defense, ACE hours…) that aren't courses. */
+  items: { code?: string; name?: string; role?: string; note?: string }[];
+  credits: number;
+};
+
+/** The degree plan as `/college` serves it — all of it editable data
+ * (plan_* tables), nothing program-specific in the UI. */
+export type DegreePlan = {
+  meta: Record<string, string>;
+  requirements: PlanRequirement[];
+  periods: { period: number; courses: PlanCourse[] }[];
+  road: PlanSemester[];
+  extras: PlanCourse[];
+  summary: {
+    credits: Record<PlanStatus, number>;
+    counts: Record<PlanStatus, number>;
+    total_credits: number;
+    done_pct: number | null;
+  };
 };
 
 export type CollegeResponse = {
   classes: SemClass[];
-  plan: {
-    meta?: Record<string, string>;
-    requirements?: {
-      key: string;
-      label: string;
-      unit: string;
-      required?: number;
-      done?: number;
-      in_course?: number;
-    }[];
-    curriculum?: { period: number; courses: PlanCourse[] }[];
-    forward?: { semester: string; label?: string; note?: string; courses: PlanCourse[] }[];
-    summary?: {
-      credits: Record<string, number>;
-      counts: Record<string, number>;
-      total_credits: number;
-      done_pct: number | null;
-    };
-  };
+  plan: DegreePlan;
 };

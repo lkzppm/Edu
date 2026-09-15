@@ -174,3 +174,46 @@ class ClassUpdateRequest(BaseModel):
     links: list[ClassLink] | None = None
     schedule: list[ClassSlot] | None = None
     reset: list[str] = Field(default_factory=list)
+
+
+# ── degree plan ───────────────────────────────────────────────
+
+
+class PlanCourseIn(BaseModel):
+    """Upsert body for PUT /college/plan/courses/{code} — only the fields
+    sent change; `name` is required when the course is new."""
+
+    name: str | None = Field(default=None, min_length=1, max_length=200)
+    credits: int | None = Field(default=None, ge=0, le=30)
+    period: int | None = Field(default=None, ge=1, le=20)
+    status: Literal["done", "current", "ahead"] | None = None
+    planned: str | None = Field(default=None, pattern=r"^\d{4}/\d$")
+    note: str | None = None
+    at_risk: bool | None = None
+    requires: list[str] | None = None
+    counts_for: str | None = Field(default=None, max_length=40)
+    role: str | None = Field(default=None, max_length=20)
+    unlocks: str | None = Field(default=None, max_length=20)
+    # Names of nullable fields to clear (period → becomes an extra, planned, note…).
+    clear: list[str] = Field(default_factory=list)
+
+
+class PlanRequirementIn(BaseModel):
+    label: str | None = Field(default=None, min_length=1, max_length=80)
+    unit: str | None = Field(default=None, max_length=8)
+    required: int | None = Field(default=None, ge=0)
+    done: int | None = Field(default=None, ge=0)
+    in_course: int | None = Field(default=None, ge=0)
+    computed: bool | None = None
+    position: int | None = None
+
+
+class PlanSemesterIn(BaseModel):
+    label: str | None = Field(default=None, max_length=80)
+    note: str | None = None
+    items: list[dict] | None = None
+
+
+class PlanImportRequest(BaseModel):
+    yaml: str = Field(min_length=1)
+    replace: bool = True
