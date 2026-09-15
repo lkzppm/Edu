@@ -57,7 +57,7 @@ function WeekStrip({
   const byDay = pendingByDay(tasks);
 
   return (
-    <div className="flex items-end justify-center gap-1.5 sm:gap-2.5">
+    <div className="flex w-full items-end justify-center gap-1 sm:gap-1.5">
       {days.map((day, i) => {
         const list = byDay.get(day.getTime()) ?? [];
         const today = i === 0;
@@ -66,7 +66,7 @@ function WeekStrip({
           <button
             key={day.toISOString()}
             onClick={() => onSelect(active ? null : day.getTime())}
-            className={`flex w-12 flex-col items-center gap-2.5 rounded-2xl px-1 py-3.5 transition-all sm:w-16 ${
+            className={`flex min-w-0 max-w-16 flex-1 basis-0 flex-col items-center gap-2 rounded-2xl px-1 py-3 transition-all ${
               active
                 ? "bg-accent/15 ring-1 ring-accent/60"
                 : today
@@ -75,7 +75,7 @@ function WeekStrip({
             }`}
             title={`${list.length} due — click to filter`}
           >
-            <div className="flex min-h-14 flex-col-reverse items-center justify-start gap-1.5">
+            <div className="flex min-h-12 flex-col-reverse items-center justify-start gap-1.5">
               {list.slice(0, 5).map((t) => (
                 <Dot
                   key={t.id}
