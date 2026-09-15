@@ -30,6 +30,8 @@ export type Course = {
   code: string | null;
   url: string | null;
   hidden: boolean;
+  /** Edu-only toggle: graded without tests (Tests tab lists it as such). */
+  no_tests: boolean;
   pending: number;
 };
 
@@ -106,6 +108,8 @@ export type SemClass = {
   platform_url: string | null;
   links: { label: string; url: string }[];
   schedule: ClassSlot[];
+  /** Fields edited in Edu (layered over the workspace registry). */
+  edited: string[];
   course_id: number | null;
   pending: number;
   work_items: CoworkItem[];

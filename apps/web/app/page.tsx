@@ -5,14 +5,14 @@ import { ChatOverlay } from "@/components/chat-overlay";
 import { CollegePanel, nextClass } from "@/components/college";
 import { ConnectorsPanel } from "@/components/connectors-panel";
 import { CoworkButton } from "@/components/cowork";
-import { upcomingExams } from "@/components/exams";
 import { GradesPanel } from "@/components/grades";
 import { CourseLoad, dayKey, Planner } from "@/components/overview";
 import { AddTaskDialog, TaskList, TaskView, ViewSwitch } from "@/components/tasks";
-import { CalendarIcon, CloseIcon, PlugIcon, PlusIcon } from "@/components/ui";
+import { isTest, TestsPanel } from "@/components/tests";
+import { CloseIcon, PlugIcon, PlusIcon } from "@/components/ui";
 import { api } from "@/lib/api";
 import { courseColorMap } from "@/lib/colors";
-import { fmtCountdown, fmtDay, fmtDue } from "@/lib/format";
+import { fmtDay } from "@/lib/format";
 import {
   CollegeResponse,
   Course,
@@ -30,7 +30,7 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
   );
 }
 
-type Panel = "tasks" | "grades" | "college";
+type Panel = "tasks" | "tests" | "grades" | "college";
 
 export default function Home() {
   const [panel, setPanel] = useState<Panel>("tasks");
@@ -104,14 +104,14 @@ export default function Home() {
   const colors = useMemo(() => courseColorMap(courses.map((c) => c.id)), [courses]);
 
   const allTasks = data?.tasks ?? [];
+  // Tests (exams) have their own tab — the Tasks tab is to-dos only.
   const tasks = useMemo(
     () =>
-      filterCourse == null ? allTasks : allTasks.filter((t) => t.course_id === filterCourse),
+      allTasks.filter(
+        (t) => !isTest(t) && (filterCourse == null || t.course_id === filterCourse)
+      ),
     [allTasks, filterCourse]
   );
-
-  const exams = useMemo(() => upcomingExams(tasks), [tasks]);
-  const nextExam = exams[0];
 
   // Day filter (from the week strip) narrows the task list only — the hero,
   // exams and workload keep showing the whole picture.
@@ -167,7 +167,7 @@ export default function Home() {
           Edu<span className="text-accent">.</span>
         </h1>
         <nav className="ml-6 flex gap-0.5 text-xs">
-          {(["tasks", "grades", "college"] as const).map((p) => (
+          {(["tasks", "tests", "grades", "college"] as const).map((p) => (
             <button
               key={p}
               onClick={() => setPanel(p)}
@@ -209,6 +209,18 @@ export default function Home() {
         </p>
       )}
 
+      {panel === "tests" && (
+        <div className="animate-msg-in pt-4">
+          <TestsPanel
+            tasks={allTasks}
+            courses={courses}
+            classes={college?.classes ?? []}
+            colors={colors}
+            onChanged={load}
+          />
+        </div>
+      )}
+
       {panel === "grades" && (
         <div className="animate-msg-in pt-4">
           <GradesPanel courses={grades?.courses ?? []} colors={colors} />
@@ -223,7 +235,7 @@ export default function Home() {
 
       {panel === "tasks" && (
         <div className="animate-msg-in">
-      {/* Hero: week count · 7-day strip · next test */}
+      {/* Hero: week count · planner */}
       <section className="flex flex-col gap-10 py-8 lg:flex-row lg:items-center lg:justify-between lg:gap-8">
         <div className="shrink-0">
           <SectionTitle>This week</SectionTitle>
@@ -265,21 +277,6 @@ export default function Home() {
             onSelect={setFilterDay}
           />
         </div>
-
-        {nextExam && (
-          <div className="shrink-0 lg:text-right">
-            <p className="inline-flex items-center gap-1.5 font-display text-[11px] font-semibold uppercase tracking-[0.22em] text-zinc-500">
-              <CalendarIcon className="h-3.5 w-3.5" /> Next test
-            </p>
-            <p className="mt-2 font-mono text-4xl font-semibold text-zinc-100">
-              {fmtCountdown(nextExam.due_at!)}
-            </p>
-            <p className="mt-1 max-w-[280px] truncate text-sm text-zinc-400 lg:ml-auto">
-              {nextExam.title}
-              <span className="text-zinc-600"> · {fmtDue(nextExam.due_at!)}</span>
-            </p>
-          </div>
-        )}
       </section>
 
       {/* Tasks + sidebar */}

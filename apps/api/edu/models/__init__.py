@@ -53,6 +53,9 @@ class Course(Base):
     code: Mapped[str | None] = mapped_column(String(80))  # short name, e.g. COS110
     url: Mapped[str | None] = mapped_column(String(300))
     hidden: Mapped[bool] = mapped_column(Boolean, default=False)  # user toggle; still syncs
+    # User toggle: the class is graded without tests (labs/projects only), so
+    # the Tests tab lists it as such instead of "no dates yet". Edu-only.
+    no_tests: Mapped[bool] = mapped_column(Boolean, default=False)
     # Canonical class this platform course belongs to (SemesterClass.code),
     # assigned by the cowork sync via platform_url/code matching.
     class_code: Mapped[str | None] = mapped_column(String(20))
@@ -142,6 +145,23 @@ class SemesterClass(Base):
     links: Mapped[list] = mapped_column(JSON, default=list)  # [{label, url}]
     schedule: Mapped[list] = mapped_column(JSON, default=list)  # [{day, start, end, room}]
     workspace_path: Mapped[str | None] = mapped_column(String(500))
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
+    )
+
+
+class ClassOverride(Base):
+    """Edu-local edits to a registry class (professor's e-mail, grading…).
+    The registry itself is a pure mirror the sync replaces, and the workspace
+    is read-only, so edits live here and are layered over it at read time —
+    same rule as task status: never clobbered by a sync (rule 6)."""
+
+    __tablename__ = "class_overrides"
+
+    code: Mapped[str] = mapped_column(String(20), primary_key=True)
+    # Only the edited keys, e.g. {"contact": "x@poli.ufrj.br"} — see
+    # routes/college.py EDITABLE for the allowed set.
+    fields: Mapped[dict] = mapped_column(JSON, default=dict)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )

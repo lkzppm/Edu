@@ -509,11 +509,25 @@ function ClassNav({
   );
 }
 
-function Line({ label, children }: { label: string; children: React.ReactNode }) {
+function Line({
+  label,
+  edited = false,
+  children,
+}: {
+  label: string;
+  /** Value comes from an Edu edit, not the workspace — say so (2026-09-14). */
+  edited?: boolean;
+  children: React.ReactNode;
+}) {
   return (
     <div className="flex gap-4 py-2 text-sm">
       <span className="w-24 shrink-0 font-mono text-[11px] uppercase tracking-wider text-zinc-600">
         {label}
+        {edited && (
+          <span className="ml-1.5 text-accent/70" title="edited in Edu">
+            ·
+          </span>
+        )}
       </span>
       <span className="min-w-0 flex-1 text-zinc-300">{children}</span>
     </div>
@@ -562,7 +576,10 @@ function ClassDetail({ sc, color }: { sc: SemClass; color: string }) {
 
       <div className="mt-6 divide-y divide-white/[0.04]">
         {sc.professor && (
-          <Line label="professor">
+          <Line
+            label="professor"
+            edited={sc.edited.includes("professor") || sc.edited.includes("contact")}
+          >
             {sc.professor}
             {sc.contact && (
               <a
@@ -574,8 +591,12 @@ function ClassDetail({ sc, color }: { sc: SemClass; color: string }) {
             )}
           </Line>
         )}
-        {sc.evaluation && <Line label="grading">{sc.evaluation}</Line>}
-        <Line label="schedule">
+        {sc.evaluation && (
+          <Line label="grading" edited={sc.edited.includes("evaluation")}>
+            {sc.evaluation}
+          </Line>
+        )}
+        <Line label="schedule" edited={sc.edited.includes("schedule")}>
           <span className="space-y-0.5 font-mono text-xs">
             {sc.schedule.map((s, i) => (
               <span key={i} className="block">
@@ -586,7 +607,10 @@ function ClassDetail({ sc, color }: { sc: SemClass; color: string }) {
           </span>
         </Line>
         {(sc.platform_url || sc.links.length > 0) && (
-          <Line label="links">
+          <Line
+            label="links"
+            edited={sc.edited.includes("links") || sc.edited.includes("platform_url")}
+          >
             <span className="flex flex-wrap gap-x-4 gap-y-1">
               {sc.platform_url && (
                 <a
