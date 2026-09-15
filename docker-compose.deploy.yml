@@ -1,0 +1,12 @@
+# Homelab override — see spec/deploy.md.
+# Usage: docker compose -f docker-compose.yml -f docker-compose.deploy.yml up -d --build
+#
+# Binds web to loopback only (reached via `tailscale serve`) and unpublishes
+# the api port entirely — the web container reaches it over the compose network.
+services:
+  api:
+    ports: !override []
+
+  web:
+    ports: !override
+      - "127.0.0.1:3001:3000"

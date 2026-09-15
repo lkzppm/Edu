@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session, joinedload
 from edu.config import get_settings
 from edu.db import get_db
 from edu.models import Course, Task
+from edu.routes.college import class_display
 from edu.schemas import ManualTaskRequest, TaskOut, TasksResponse, TasksSummary, TaskUpdateRequest
 
 router = APIRouter()
@@ -15,13 +16,17 @@ router = APIRouter()
 STATUSES = ("todo", "done", "dismissed")
 
 
-def _out(task: Task) -> TaskOut:
+def _out(task: Task, registry: dict[str, str] | None = None) -> TaskOut:
     course = task.course
+    name = course.name if course else None
+    code = course.code if course else None
+    if course and registry and course.class_code and course.class_code in registry:
+        name, code = registry[course.class_code], course.class_code
     return TaskOut(
         id=task.id,
         course_id=task.course_id,
-        course_name=course.name if course else None,
-        course_code=course.code if course else None,
+        course_name=name,
+        course_code=code,
         connector=course.account.connector if course else None,
         kind=task.kind,
         title=task.title,
@@ -42,7 +47,8 @@ def _summary(tasks: list[Task]) -> TasksSummary:
     day_start = local_now.replace(hour=0, minute=0, second=0, microsecond=0).astimezone(UTC)
     day_end = day_start + timedelta(days=1)
     week_end = day_start + timedelta(days=7)
-    todo = [t for t in tasks if t.status == "todo" and t.due_at is not None]
+    # Exams live in the Tests tab, not the to-do counts (2026-09-14).
+    todo = [t for t in tasks if t.status == "todo" and t.due_at is not None and t.kind != "exam"]
     return TasksSummary(
         overdue=sum(1 for t in todo if t.due_at < now),
         due_today=sum(1 for t in todo if day_start <= t.due_at < day_end and t.due_at >= now),
@@ -69,7 +75,8 @@ def list_tasks(course_id: int | None = None, session: Session = Depends(get_db))
     if course_id is not None:
         query = query.where(Task.course_id == course_id)
     tasks = list(session.scalars(query))
-    return TasksResponse(summary=_summary(tasks), tasks=[_out(t) for t in tasks])
+    registry = class_display(session)
+    return TasksResponse(summary=_summary(tasks), tasks=[_out(t, registry) for t in tasks])
 
 
 @router.post("", response_model=TaskOut, status_code=201)
@@ -84,17 +91,19 @@ def create_task(body: ManualTaskRequest, session: Session = Depends(get_db)) -> 
             due_at = due_at.replace(tzinfo=ZoneInfo(get_settings().timezone))
     if body.course_id is not None and session.get(Course, body.course_id) is None:
         raise HTTPException(status_code=404, detail="Course not found")
+    if body.kind == "exam" and (due_at is None or body.course_id is None):
+        raise HTTPException(status_code=422, detail="A test needs a date and a class")
     task = Task(
         course_id=body.course_id,
         external_id=None,
-        kind="manual",
+        kind=body.kind,
         title=body.title.strip(),
         description=body.description.strip(),
         due_at=due_at,
     )
     session.add(task)
     session.commit()
-    return _out(task)
+    return _out(task, class_display(session))
 
 
 @router.patch("/{task_id}", response_model=TaskOut)
@@ -117,7 +126,8 @@ def delete_task(task_id: int, session: Session = Depends(get_db)):
     task = session.get(Task, task_id)
     if task is None:
         raise HTTPException(status_code=404, detail="Task not found")
-    if task.kind != "manual":
+    # Synced rows have an external_id; user-added ones (to-dos, tests) don't.
+    if task.external_id is not None:
         raise HTTPException(status_code=409, detail="Synced tasks are dismissed, not deleted")
     session.delete(task)
     session.commit()

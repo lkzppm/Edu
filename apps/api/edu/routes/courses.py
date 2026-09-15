@@ -4,36 +4,43 @@ from sqlalchemy.orm import Session, joinedload
 
 from edu.db import get_db
 from edu.models import Course, Task
+from edu.routes.college import class_display
 from edu.schemas import CourseOut, CourseUpdateRequest
 
 router = APIRouter()
 
 
-def _out(session: Session, course: Course) -> CourseOut:
+def _out(session: Session, course: Course, registry: dict[str, str] | None = None) -> CourseOut:
+    registry = registry if registry is not None else class_display(session)
     pending = (
         session.scalar(
             select(func.count(Task.id)).where(Task.course_id == course.id, Task.status == "todo")
         )
         or 0
     )
+    name, code = course.name, course.code
+    if course.class_code and course.class_code in registry:
+        name, code = registry[course.class_code], course.class_code
     return CourseOut(
         id=course.id,
         account_id=course.account_id,
         connector=course.account.connector,
-        name=course.name,
-        code=course.code,
+        name=name,
+        code=code,
         url=course.url,
         hidden=course.hidden,
+        no_tests=course.no_tests,
         pending=pending,
     )
 
 
 @router.get("", response_model=list[CourseOut])
 def list_courses(session: Session = Depends(get_db)) -> list[CourseOut]:
+    registry = class_display(session)
     courses = session.scalars(
         select(Course).options(joinedload(Course.account)).order_by(Course.account_id, Course.id)
     ).all()
-    return [_out(session, c) for c in courses]
+    return [_out(session, c, registry) for c in courses]
 
 
 @router.patch("/{course_id}", response_model=CourseOut)
@@ -43,6 +50,9 @@ def update_course(
     course = session.get(Course, course_id, options=[joinedload(Course.account)])
     if course is None:
         raise HTTPException(status_code=404, detail="Course not found")
-    course.hidden = body.hidden
+    if body.hidden is not None:
+        course.hidden = body.hidden
+    if body.no_tests is not None:
+        course.no_tests = body.no_tests
     session.commit()
     return _out(session, course)

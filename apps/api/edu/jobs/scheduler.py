@@ -28,7 +28,9 @@ def job_catchup() -> None:
             stale = [
                 (acc.id, acc.connector)
                 for acc in session.scalars(select(Account))
-                if acc.sync_status != "syncing"
+                # "auth" is parked: retrying a dead credential just hammers the
+                # platform. It waits for a re-auth (or the manual sync button).
+                if acc.sync_status not in ("syncing", "auth")
                 and (
                     acc.last_sync_at is None
                     or now - acc.last_sync_at > timedelta(hours=STALE_AFTER_HOURS)
@@ -67,6 +69,13 @@ def start_scheduler() -> BackgroundScheduler:
     )
     sched.add_job(
         lambda: run_sync("classroom"), "interval", hours=3, id="classroom", misfire_grace_time=600
+    )
+    sched.add_job(
+        lambda: run_sync("compasso"), "interval", hours=3, id="compasso", misfire_grace_time=600
+    )
+    # Local filesystem — cheap, so a tighter interval keeps cowork fresh.
+    sched.add_job(
+        lambda: run_sync("cowork"), "interval", hours=1, id="cowork", misfire_grace_time=600
     )
     # Interval jobs resume on wake, so this heals whatever the intervals missed.
     sched.add_job(job_catchup, "interval", minutes=10, id="catchup", misfire_grace_time=300)

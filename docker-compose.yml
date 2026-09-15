@@ -23,21 +23,44 @@ services:
     environment:
       DATABASE_URL: postgresql+psycopg://edu:${POSTGRES_PASSWORD:-edu}@db:5432/edu
       WEB_ORIGIN: http://edu.localhost
+      WORKSPACE_DIR: /workspace
+    volumes:
+      # Claude Cowork workspace, read-only (rule: Edu never writes there).
+      # Locally the real dir; on the homelab the synced replica — set COWORK_DIR.
+      - ${COWORK_DIR:-~/Desktop/UFRJ}:/workspace:ro
     depends_on:
       db:
         condition: service_healthy
     ports:
       - "8001:8000"
 
+  agent:
+    build: ./apps/agent
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      API_BASE: http://api:8000
+    volumes:
+      # Chat sessions live in ~/.claude — persist them so container rebuilds
+      # don't orphan resumable conversations.
+      - agent_state:/root/.claude
+    depends_on:
+      - api
+
   web:
     build: ./apps/web
     restart: unless-stopped
     environment:
       API_URL: http://api:8000
+      AGENT_URL: http://agent:8100
     depends_on:
       - api
+      - agent
     ports:
       - "3001:3000"
 
 volumes:
   pgdata:
+  agent_state:

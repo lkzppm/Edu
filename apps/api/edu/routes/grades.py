@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from edu.db import get_db
 from edu.models import Course, GradeItem
+from edu.routes.college import class_display
 from edu.schemas import CourseGradesOut, GradeItemOut, GradesResponse
 
 router = APIRouter()
@@ -54,6 +55,7 @@ def list_grades(session: Session = Depends(get_db)) -> GradesResponse:
         .where(Course.hidden.is_(False))
         .order_by(Course.account_id, Course.id)
     ).unique()
+    registry = class_display(session)
     out = []
     for course in courses:
         items = [i for i in course.grade_items if i.kind == "item"]
@@ -62,11 +64,12 @@ def list_grades(session: Session = Depends(get_db)) -> GradesResponse:
         source_total = next(
             (i for i in course.grade_items if i.kind == "total" and i.grade is not None), None
         )
+        linked = course.class_code and course.class_code in registry
         out.append(
             CourseGradesOut(
                 course_id=course.id,
-                course_name=course.name,
-                course_code=course.code,
+                course_name=registry[course.class_code] if linked else course.name,
+                course_code=course.class_code if linked else course.code,
                 connector=course.account.connector,
                 total=_out(source_total) if source_total else _computed_total(items),
                 items=[_out(i) for i in sorted(items, key=lambda i: (i.grade is None, i.id))],

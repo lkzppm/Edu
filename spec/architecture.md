@@ -6,16 +6,18 @@
 Google OAuth ─────▶ classroom connector ──▶ Google Classroom API (read-only)
 Moodle token ─────▶ moodle connector ─────▶ moodle.cos.ufrj.br  (WS REST)
 Moodle token ─────▶ moodle connector ─────▶ moodle.poli.ufrj.br (Polimoodle)
+page URL ─────────▶ compasso connector ───▶ compasso.ufrj.br page + public Google Sheet CSV
+bind mount (ro) ──▶ cowork connector ─────▶ ~/Desktop/UFRJ workspace (CONTEXT.md pattern)
                           │
                           ▼
-             ┌─────────────────────────┐
-             │  api (FastAPI + jobs)   │
-             │  unified schema         │
-             │  Postgres               │
-             └───────────┬─────────────┘
-                         ▼
-                  web (Next.js)
-                  dark/teal UI
+             ┌─────────────────────────┐      ┌──────────────────────────┐
+             │  api (FastAPI + jobs)   │◀─────│  agent (Claude Agent SDK)│
+             │  unified schema         │      │  chat tools over the API │
+             │  Postgres               │      └────────────▲─────────────┘
+             └───────────┬─────────────┘                   │ SSE
+                         ▼                                 │
+                  web (Next.js) ───────────────────────────┘
+                  dark/teal UI      /api/agent/* proxy
 ```
 
 The backend owns all data and computation. The frontend only reads the API. Connectors are the only code that knows the platforms exist; everything else consumes the unified schema ([data-model.md](data-model.md)). One `moodle` connector serves any Moodle site — UFRJ and Poli are just presets with different `base_url`.
@@ -26,7 +28,8 @@ The backend owns all data and computation. The frontend only reads the API. Conn
 |---|---|---|---|
 | `db` | `postgres:16` | 5432 (internal) | storage, volume-backed |
 | `api` | `./apps/api` | **8001**→8000 | FastAPI + APScheduler sync jobs (in-process; no Celery — single user) |
-| `web` | `./apps/web` | **3001**→3000 | Next.js dashboard; proxies `/api/*`→api |
+| `agent` | `./apps/agent` | 8100 (internal) | Claude Agent SDK chat service — see below |
+| `web` | `./apps/web` | **3001**→3000 | Next.js dashboard; proxies `/api/*`→api and `/api/agent/*`→agent |
 
 Ports 8001/3001 so Edu runs beside Fin (8000/3000). `docker compose up` is the only way Edu runs. Secrets exclusively from a git-ignored `.env` (template: `.env.example`).
 
@@ -35,8 +38,41 @@ Ports 8001/3001 so Edu runs beside Fin (8000/3000). `docker compose up` is the o
 ## Stack
 
 - **api**: Python 3.12, FastAPI, SQLAlchemy 2.0, Pydantic v2, APScheduler, httpx.
-- **web**: Next.js (App Router), TypeScript strict, Tailwind.
+- **agent**: Python 3.12, FastAPI, claude-agent-sdk, httpx.
+- **web**: Next.js (App Router), TypeScript strict, Tailwind, react-markdown.
 - **db**: Postgres 16.
+
+## Chat agent (apps/agent — mirrors Fin's)
+
+A separate container running the **Claude Agent SDK** on the user's Claude
+subscription (`CLAUDE_CODE_OAUTH_TOKEN` in `.env`, from `claude setup-token`;
+missing token → `POST /chat` answers 409 and the UI shows the one-time setup).
+`POST /chat` streams SSE events (`text` deltas, `tool` / `tool_input`,
+`thinking`, `done` with the session id for resume, `error`); sessions persist
+in the `agent_state` volume so conversations survive rebuilds.
+
+Tools are in-process MCP wrappers over the Edu API — `get_tasks`, `get_grades`,
+`get_college`, `get_courses`, `get_connectors`, `sync_connector`, `create_task`,
+`create_test`, `delete_task`, `update_class`, `update_plan_course`,
+`delete_plan_course`, `update_plan_requirement`, `update_plan_meta` — plus the
+built-in WebSearch/WebFetch. Everything else (Bash, file tools…) is
+disallowed: the agent sees college data and the web, never the machine, and
+stays read-only against the platforms (rule 6; the only writes are Edu-internal
+— a sync trigger, `create_task`, which POSTs a manual to-do to `/tasks`,
+resolving the class Lucas named against `/courses` and, failing that, the
+registry codes in `/college`, and takes `due_at` in local time, and
+`create_test` (2026-09-14 — the agent had filed "add a prova on 28/10" as a
+to-do), which POSTs the same shape with `kind: exam` and requires both the
+class and the date; the system prompt routes any prova/exam/test mention to it —
+and `delete_task` (same day), which DELETEs a user-added row by id and, on the
+API's 409 for a synced row, falls back to PATCH `dismissed` and says so — and
+`update_class`, which PATCHes `/college/classes/{code}` with Edu-local edits to
+a class's info (professor, contact, evaluation, links, schedule…); the
+workspace and the registry mirror are never written, see spec/data-model.md) —
+and the four `*_plan_*` tools (same day), which edit the degree plan through
+`/college/plan/*`: a course's status/planned semester/credits/prerequisites,
+optatives, the requirement meters and the plan facts. The agent talks to the api over the compose network; its port is
+never published — the web app proxies `/api/agent/*` to it.
 
 ## Sync cadence (APScheduler)
 

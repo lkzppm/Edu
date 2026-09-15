@@ -12,6 +12,7 @@ dependencies = [
     "pydantic-settings>=2.3",
     "httpx>=0.27",
     "apscheduler>=3.10,<4",
+    "pyyaml>=6.0",
 ]
 
 [project.optional-dependencies]
@@ -23,6 +24,9 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 include = ["edu*"]
+
+[tool.setuptools.package-data]
+edu = ["data/*.yml"]
 
 [tool.ruff]
 line-length = 100

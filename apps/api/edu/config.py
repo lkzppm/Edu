@@ -12,6 +12,9 @@ class Settings(BaseSettings):
     # proxy). The OAuth callback bounces here; empty → stay on the current host.
     web_origin: str = ""
     timezone: str = "America/Sao_Paulo"
+    # Claude Cowork workspace mount (read-only). The compose file binds the
+    # host dir (COWORK_DIR) here; on the homelab it's the synced replica.
+    workspace_dir: str = "/workspace"
 
     model_config = {"env_file": ".env", "extra": "ignore"}
 

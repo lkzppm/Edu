@@ -1,6 +1,6 @@
 # Connectors
 
-Both connectors implement `sync(session, account)` and are registered in `SYNCERS` (`connectors/__init__.py`). They raise `ConnectorError` with a user-facing message (never containing credentials). `config["demo"] = true` routes the sync to `connectors/demo.py`, which seeds realistic courses/tasks with relative due dates.
+Every connector implements `sync(session, account)` and is registered in `SYNCERS` (`connectors/__init__.py`). They raise `ConnectorError` with a user-facing message (never containing credentials). `config["demo"] = true` routes the sync to `connectors/demo.py`, which seeds realistic courses/tasks with relative due dates.
 
 ## moodle
 
@@ -11,6 +11,10 @@ One connector for any Moodle site. UFRJ (`https://moodle.cos.ufrj.br/`) and Poli
 **Auth.** Two paths in the connect form:
 - paste a **web-service token** directly (Moodle → Preferences → Security keys, "Moodle mobile web service"), or
 - enter username + password: the api exchanges them at `POST {base}/login/token.php?service=moodle_mobile_app` and stores **only the token** — the password is never persisted or logged.
+
+**Expiry and re-auth.** A dead credential raises `AuthError` (a `ConnectorError` subclass), which parks the account at `sync_status="auth"` instead of the generic `error` — see [data-model.md](data-model.md). Moodle raises it on errorcodes `invalidtoken`, `expiredtoken`, `tokennotfound` and on a rejected `login/token.php` (`invalidlogin`, `usernotconfirmed`) — but **not** on `accessexception`, which is per-function access and keeps failing soft; Classroom on OAuth `invalid_grant` (refresh token revoked/expired) or a 401. Transport failures (an expired site certificate, DNS, timeouts) stay `error` — a new token wouldn't fix them. The mid-sync fail-soft blocks re-raise `AuthError` so a token revoked halfway through parks the account rather than silently syncing partial data.
+
+Renewal keeps the account row: `POST /connectors/accounts/{id}/reauth` takes `{token}` or `{username, password}`, validates against the stored `base_url` with `core_webservice_get_site_info` before storing, then resumes syncing. Classroom renews through OAuth — `GET /connectors/classroom/auth-url?account_id={id}` puts the id in `state` (`edu:{id}`) and the callback swaps the refresh token on that row instead of creating a second account.
 
 `config`: `{base_url, token}`. The connect route validates by calling `core_webservice_get_site_info` before storing (fail fast, and it yields `userid` + `sitename`).
 
@@ -43,3 +47,35 @@ Official REST API, OAuth 2.0 web flow, read-only scopes:
 - `GET /courses/{id}/courseWork/-/studentSubmissions?userId=me` — state `TURNED_IN`/`RETURNED` → done at source; `assignedGrade`/`maxPoints` → grade fields
 
 Access tokens are fetched per sync from the stored refresh token and never persisted.
+
+## compasso (2026-08-26)
+
+Some UFRJ courses live outside Moodle/Classroom, on `compasso.ufrj.br/disciplinas/<code>` — a public page embedding a **public Google Sheet** with the semester schedule. No API, no login: the page is plain HTML and the sheet answers the anonymous CSV export (`docs.google.com/spreadsheets/d/{id}/export?format=csv`; a private sheet 200s into an HTML sign-in page, detected by content-type and rejected with a clear message).
+
+**Connect.** The user pastes the course page URL. `POST /connectors/compasso` runs `probe()` — fetch page, find the sheet link, fetch + parse the CSV — before storing anything (`config = {page_url}`). One page = one course; `external_id = page:<url-slug>` (e.g. `page:eel580`).
+
+**Sync** re-reads the page every time to rediscover the sheet id, so a sheet swapped in for a new semester is picked up without reconnecting.
+
+Parsing (pinned to the real EEL580 sheet in tests):
+
+- Course name/code from the page `<title>` ("Laboratório de … - EEL580") via the shared `COURSE_CODE_RE`.
+- The sheet is a table with a header row containing **Data** (dd/mm), **Atividades** and **Tarefas Extra Classe** — columns located by header text, not position.
+- `dd/mm` carries no year: the page's `YYYY-1|2` semester label (iframe aria-label) supplies it; without one, pick the candidate year closest to today (Brazilian semesters never cross New Year). Due time is **23:59 local** (the sheet has no times), matching Classroom's no-time default.
+- **Atividades** matching the shared `EXAM_RE` → `kind=exam` (`external_id = exam:<date>`) — except grade-handout rows ("Entrega de nota P2…"), excluded by a `nota` guard.
+- **Tarefas Extra Classe** → `kind=assignment` when it says "entrega", else `activity` (`external_id = extra:<date>:<slug>`). Rows mentioning "aula" ("Aula remota devido a…") are notes, not work — skipped.
+- Plain lectures, "Não houve aula", "Autoestudo" produce no tasks — the schedule itself is not a to-do list.
+
+No grades (the sheet has none) and no per-task completion at the source (the sheet's ✓ column tracks lectures given, not the student's work) — done/dismissed is purely local, which rule 6 already guarantees.
+
+## cowork (2026-08-26)
+
+Not a platform — the **Claude Cowork workspace**: the local directory where coursework is produced with Claude (`~/Desktop/UFRJ`), bind-mounted **read-only** into the api (`COWORK_DIR` host path → `WORKSPACE_DIR=/workspace`; Edu never writes there). Single account instance; connect just validates the mount and pattern. Hourly schedule slot (local fs, cheap) plus the usual refresh paths, and `POST /connectors/cowork/sync` is pinged by `tools/cowork-push.sh` after each replication push.
+
+**The pattern** (also documented in the workspace's own README, so cowork sessions preserve it):
+
+- `classes/CODIGO_Nome/CONTEXT.md` — **YAML frontmatter** is the contract: `code`, `name`, `semester`, `turma`, `credits`, `kind` (`obrigatoria`|`optativa`), `period`, `anchor` (course it unlocks), `flags`, `professor`, `contact`, `evaluation`, `platform`, `platform_url` (canonical hostname), `links`, `schedule` (`{day: mon…sun, start, end, room}`). The prose below the frontmatter belongs to Claude and is never parsed.
+- `classes/*/listas/AAAA-MM-DD_Slug/` — each delivery folder becomes a WorkItem (date from the name, title from the slug, `has_pdf` = delivery built).
+
+Sync **fully replaces** SemesterClass + WorkItem rows (they mirror the filesystem), then stamps `Course.class_code` by matching each platform course to a class — by course code first, else by normalized `platform_url` (scheme stripped, `polimoodle.poli.ufrj.br` aliased to the canonical `moodle.poli.ufrj.br`). Classroom courses carry no code, so their `alternateLink` is what matches. A class with `platform: none` (Redes I) exists only in the registry — and still shows up across Edu.
+
+**Homelab**: same connector, different mount — the dir is replicated one-way by `tools/cowork-push.sh` (fswatch → rsync --delete → sync ping) from the machines that edit it; the homelab replica is never written locally. See spec/deploy.md.

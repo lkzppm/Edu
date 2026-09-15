@@ -53,6 +53,12 @@ class Course(Base):
     code: Mapped[str | None] = mapped_column(String(80))  # short name, e.g. COS110
     url: Mapped[str | None] = mapped_column(String(300))
     hidden: Mapped[bool] = mapped_column(Boolean, default=False)  # user toggle; still syncs
+    # User toggle: the class is graded without tests (labs/projects only), so
+    # the Tests tab lists it as such instead of "no dates yet". Edu-only.
+    no_tests: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Canonical class this platform course belongs to (SemesterClass.code),
+    # assigned by the cowork sync via platform_url/code matching.
+    class_code: Mapped[str | None] = mapped_column(String(20))
 
     account: Mapped[Account] = relationship(back_populates="courses")
     tasks: Mapped[list["Task"]] = relationship(
@@ -113,3 +119,135 @@ class Task(Base):
     )
 
     course: Mapped[Course | None] = relationship(back_populates="tasks")
+
+
+class SemesterClass(Base):
+    """Canonical class registry, mirrored from the Claude Cowork workspace
+    (CONTEXT.md frontmatter). Pure mirror — sync fully replaces rows."""
+
+    __tablename__ = "semester_classes"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    code: Mapped[str] = mapped_column(String(20), unique=True)
+    name: Mapped[str] = mapped_column(String(200))
+    semester: Mapped[str | None] = mapped_column(String(10))
+    turma: Mapped[str | None] = mapped_column(String(20))
+    credits: Mapped[int | None]
+    kind: Mapped[str | None] = mapped_column(String(20))  # obrigatoria | optativa
+    period: Mapped[int | None]
+    anchor: Mapped[str | None] = mapped_column(String(20))  # course this one unlocks
+    flags: Mapped[list] = mapped_column(JSON, default=list)
+    professor: Mapped[str | None] = mapped_column(String(200))
+    contact: Mapped[str | None] = mapped_column(String(200))
+    evaluation: Mapped[str | None] = mapped_column(Text)
+    platform: Mapped[str | None] = mapped_column(String(20))
+    platform_url: Mapped[str | None] = mapped_column(String(300))
+    links: Mapped[list] = mapped_column(JSON, default=list)  # [{label, url}]
+    schedule: Mapped[list] = mapped_column(JSON, default=list)  # [{day, start, end, room}]
+    workspace_path: Mapped[str | None] = mapped_column(String(500))
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
+    )
+
+
+class ClassOverride(Base):
+    """Edu-local edits to a registry class (professor's e-mail, grading…).
+    The registry itself is a pure mirror the sync replaces, and the workspace
+    is read-only, so edits live here and are layered over it at read time —
+    same rule as task status: never clobbered by a sync (rule 6)."""
+
+    __tablename__ = "class_overrides"
+
+    code: Mapped[str] = mapped_column(String(20), primary_key=True)
+    # Only the edited keys, e.g. {"contact": "x@poli.ufrj.br"} — see
+    # routes/college.py EDITABLE for the allowed set.
+    fields: Mapped[dict] = mapped_column(JSON, default=dict)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
+    )
+
+
+class WorkItem(Base):
+    """One delivery folder in the cowork workspace (listas/AAAA-MM-DD_Slug).
+    Pure mirror of the filesystem — sync fully replaces rows."""
+
+    __tablename__ = "work_items"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    class_code: Mapped[str] = mapped_column(String(20))
+    date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    slug: Mapped[str] = mapped_column(String(200))
+    title: Mapped[str] = mapped_column(String(200))
+    path: Mapped[str] = mapped_column(String(500))
+    files: Mapped[int] = mapped_column(default=0)
+    has_pdf: Mapped[bool] = mapped_column(Boolean, default=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
+    )
+
+
+# ── degree plan (2026-09-14: moved from data/degree_plan.yml into the DB so
+# Edu — the UI and the agent — can edit it; the YAML is now an import seed
+# and the export format) ────────────────────────────────────────────────
+
+
+class PlanCourse(Base):
+    """One course of the degree plan. `period` set → part of the curriculum
+    grid (a mandatory); null → an extra (optative, free choice…) that only
+    shows in the semester it is planned for."""
+
+    __tablename__ = "plan_courses"
+
+    code: Mapped[str] = mapped_column(String(20), primary_key=True)
+    name: Mapped[str] = mapped_column(String(200))
+    credits: Mapped[int | None]
+    period: Mapped[int | None]
+    status: Mapped[str] = mapped_column(String(12), default="ahead")  # done|current|ahead
+    planned: Mapped[str | None] = mapped_column(String(10))  # semester, e.g. 2027/1
+    note: Mapped[str | None] = mapped_column(Text)
+    at_risk: Mapped[bool] = mapped_column(Boolean, default=False)
+    requires: Mapped[list] = mapped_column(JSON, default=list)  # prerequisite codes
+    counts_for: Mapped[str | None] = mapped_column(String(40))  # PlanRequirement.key
+    role: Mapped[str | None] = mapped_column(String(20))  # free tag: ancora, optativa…
+    unlocks: Mapped[str | None] = mapped_column(String(20))  # course this one gates
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
+    )
+
+
+class PlanRequirement(Base):
+    """A graduation requirement meter. `computed` → done/in_course are summed
+    from PlanCourse credits with `counts_for == key`; else the stored values."""
+
+    __tablename__ = "plan_requirements"
+
+    key: Mapped[str] = mapped_column(String(40), primary_key=True)
+    label: Mapped[str] = mapped_column(String(80))
+    unit: Mapped[str] = mapped_column(String(8), default="cr")
+    required: Mapped[int | None]
+    done: Mapped[int] = mapped_column(default=0)
+    in_course: Mapped[int] = mapped_column(default=0)
+    computed: Mapped[bool] = mapped_column(Boolean, default=False)
+    position: Mapped[int] = mapped_column(default=0)
+
+
+class PlanSemester(Base):
+    """Per-semester label/note for the road to graduation, plus free-form
+    items (a project defense, ACE hours…) that aren't courses."""
+
+    __tablename__ = "plan_semesters"
+
+    semester: Mapped[str] = mapped_column(String(10), primary_key=True)
+    label: Mapped[str | None] = mapped_column(String(80))
+    note: Mapped[str | None] = mapped_column(Text)
+    items: Mapped[list] = mapped_column(JSON, default=list)  # [{code?, name, role?, note?}]
+
+
+class PlanMeta(Base):
+    """Key/value plan facts: student, program, current_semester,
+    graduation_target, hard_limit, notes…"""
+
+    __tablename__ = "plan_meta"
+
+    key: Mapped[str] = mapped_column(String(40), primary_key=True)
+    value: Mapped[str] = mapped_column(Text)

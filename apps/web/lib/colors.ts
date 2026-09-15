@@ -1,16 +1,18 @@
 /** Course entity colors — a course keeps its hue everywhere (chips, exam cards,
- * task dots). Slots inherited from Fin's dataviz-validated dark palette; the
- * teal accent (#22b8cf) is reserved for the brand, never a course. Assigned by
- * course id order, never reshuffled by rank. */
+ * task dots). Cool-only palette (2026-08-30 — Lucas: blues/greens/purples,
+ * no warm hues), validated with the dataviz six checks on the dark surface:
+ * hue families alternate and lightness ladders so neighbors never blur. The
+ * teal accent (#22b8cf) stays reserved for the brand, never a course.
+ * Assigned by course id order, never reshuffled by rank. */
 export const COURSE_SLOTS = [
-  "#3987e5", // blue
-  "#c98500", // gold
-  "#d55181", // magenta
-  "#199e70", // green
-  "#9085e9", // violet
-  "#d95926", // orange
-  "#b91d63", // carmine
-  "#008300", // dark green
+  "#3f8fe0", // blue
+  "#2bab81", // green
+  "#8f7ff0", // lavender
+  "#2d9fb8", // teal
+  "#7d52d8", // violet
+  "#4aa94a", // leaf green
+  "#2f6fb8", // deep blue
+  "#a678e0", // light purple
 ];
 
 export function courseColorMap(courseIds: number[]): Map<number, string> {
